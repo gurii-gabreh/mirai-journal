@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>自己分析 — Mirai Journal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" />
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <span class="logo-icon"><i class="ti ti-compass"></i></span>
+          <span class="logo-text">Mirai<br><em>Journal</em></span>
+        </div>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">メイン</div>
+        <a href="../index.html" class="nav-item"><i class="ti ti-layout-dashboard"></i><span>ダッシュボード</span></a>
+        <a href="journal.html" class="nav-item"><i class="ti ti-pencil"></i><span>今日のジャーナル</span></a>
+        <a href="analysis.html" class="nav-item active"><i class="ti ti-chart-radar"></i><span>自己分析</span></a>
+        <a href="trends.html" class="nav-item"><i class="ti ti-world-search"></i><span>トレンド記録</span></a>
+        <a href="career.html" class="nav-item"><i class="ti ti-rocket"></i><span>キャリア候補</span></a>
+        <div class="nav-section-label">設定</div>
+        <a href="settings.html" class="nav-item"><i class="ti ti-settings"></i><span>API設定</span></a>
+      </nav>
+    </aside>
+
+    <main class="main-content">
+      <header class="top-header">
+        <button class="menu-toggle" id="menuToggle"><i class="ti ti-menu-2"></i></button>
+        <div class="header-title"><h1>自己分析</h1><span class="header-date">蓄積データから自動生成</span></div>
+      </header>
+
+      <div class="content-body">
+        <div class="two-col" style="margin-bottom:1rem;">
+          <!-- 強みランキング -->
+          <div class="card">
+            <div class="card-header">
+              <h2><i class="ti ti-star"></i>あなたの強みランキング</h2>
+              <span style="font-size:11px;color:var(--text-muted);" id="strengthUpdateDate"></span>
+            </div>
+            <div id="fullStrengthList">
+              <div class="empty-state">
+                <i class="ti ti-chart-off"></i>
+                <p>ジャーナルを記録すると<br>強みが自動分析されます</p>
+                <a href="journal.html" class="btn-primary">ジャーナルを書く</a>
+              </div>
+            </div>
+          </div>
+
+          <!-- キャリア候補 -->
+          <div class="card">
+            <div class="card-header">
+              <h2><i class="ti ti-rocket"></i>キャリア候補ランキング</h2>
+            </div>
+            <div id="fullCareerList">
+              <div class="empty-state">
+                <i class="ti ti-rocket-off"></i>
+                <p>分析後に提案されます</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ジャーナル履歴 -->
+        <div class="card">
+          <div class="card-header">
+            <h2><i class="ti ti-history"></i>ジャーナル履歴</h2>
+            <span style="font-size:12px;color:var(--text-muted);" id="journalTotal"></span>
+          </div>
+          <div id="journalHistory">
+            <div class="empty-state">
+              <i class="ti ti-notes-off"></i>
+              <p>まだ記録がありません</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="../js/storage.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const toggle = document.getElementById('menuToggle');
+      const sidebar = document.getElementById('sidebar');
+      if (toggle && sidebar) toggle.addEventListener('click', () => sidebar.classList.toggle('open'));
+
+      renderStrengths();
+      renderCareers();
+      renderHistory();
+    });
+
+    function renderStrengths() {
+      const strengths = Storage.getStrengths();
+      const el = document.getElementById('fullStrengthList');
+      if (!el || !strengths.length) return;
+      const colors = ['#0f9e6e','#2563eb','#7c3aed','#d97706','#e74c3c','#888','#1a9ed4','#e67e22'];
+      el.innerHTML = strengths.map((s, i) => `
+        <div class="strength-item">
+          <div class="strength-header">
+            <span class="strength-name">${i+1}. ${esc(s.name)}</span>
+            <span class="strength-pct">${s.score}%</span>
+          </div>
+          <div class="bar-bg">
+            <div class="bar-fill" style="width:${s.score}%;background:${colors[i%colors.length]};"></div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function renderCareers() {
+      const careers = Storage.getCareers();
+      const el = document.getElementById('fullCareerList');
+      if (!el || !careers.length) return;
+      el.innerHTML = careers.map((c, i) => `
+        <div class="career-item">
+          <span class="career-rank">${i+1}</span>
+          <div style="flex:1;">
+            <div class="career-name">${esc(c.name)}</div>
+            <div style="font-size:11px;color:var(--text-muted);">${esc(c.reason || '')}</div>
+          </div>
+          <span class="career-score-badge">適合${c.score}%</span>
+        </div>
+      `).join('');
+    }
+
+    function renderHistory() {
+      const journals = Storage.getJournals();
+      const totalEl = document.getElementById('journalTotal');
+      if (totalEl) totalEl.textContent = `計${journals.length}件`;
+      const el = document.getElementById('journalHistory');
+      if (!el || !journals.length) return;
+      el.innerHTML = journals.map(j => `
+        <div class="journal-item">
+          <div class="journal-item-date">${new Date(j.date).toLocaleString('ja-JP')}</div>
+          <div class="journal-item-text">${esc(j.text)}</div>
+          <div class="journal-item-tags">${(j.tags||[]).map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>
+        </div>
+      `).join('');
+    }
+
+    function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  </script>
+</body>
+</html>

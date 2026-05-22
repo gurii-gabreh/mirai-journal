@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>API設定 — Mirai Journal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" />
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <span class="logo-icon"><i class="ti ti-compass"></i></span>
+          <span class="logo-text">Mirai<br><em>Journal</em></span>
+        </div>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">メイン</div>
+        <a href="../index.html" class="nav-item"><i class="ti ti-layout-dashboard"></i><span>ダッシュボード</span></a>
+        <a href="journal.html" class="nav-item"><i class="ti ti-pencil"></i><span>今日のジャーナル</span></a>
+        <a href="analysis.html" class="nav-item"><i class="ti ti-chart-radar"></i><span>自己分析</span></a>
+        <a href="trends.html" class="nav-item"><i class="ti ti-world-search"></i><span>トレンド記録</span></a>
+        <a href="career.html" class="nav-item"><i class="ti ti-rocket"></i><span>キャリア候補</span></a>
+        <div class="nav-section-label">設定</div>
+        <a href="settings.html" class="nav-item active"><i class="ti ti-settings"></i><span>API設定</span></a>
+      </nav>
+    </aside>
+
+    <main class="main-content">
+      <header class="top-header">
+        <button class="menu-toggle" id="menuToggle"><i class="ti ti-menu-2"></i></button>
+        <div class="header-title"><h1>API設定</h1></div>
+      </header>
+
+      <div class="content-body">
+        <div class="settings-form">
+
+          <div id="alertArea"></div>
+
+          <!-- Gemini APIキー -->
+          <div class="card" style="margin-bottom:1rem;">
+            <div class="card-header">
+              <h2><i class="ti ti-sparkles"></i>Gemini API設定</h2>
+              <span class="ai-badge badge-gemini">司令塔AI</span>
+            </div>
+            <div class="alert alert-info" style="margin-bottom:1rem;">
+              <strong>取得方法：</strong> <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:inherit;text-decoration:underline;">Google AI Studio</a> → 「Create API Key」→ コピー
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="geminiKey">Gemini API キー</label>
+              <div style="display:flex;gap:8px;">
+                <input type="password" class="form-input" id="geminiKey" placeholder="AIza..." style="flex:1;" />
+                <button class="btn-secondary" onclick="toggleVisibility('geminiKey')"><i class="ti ti-eye"></i></button>
+                <button class="btn-secondary" id="testGeminiBtn" onclick="testGemini()"><i class="ti ti-plug"></i>テスト</button>
+              </div>
+              <div class="form-hint">APIキーはブラウザのローカルストレージに保存されます（外部に送信されません）</div>
+            </div>
+          </div>
+
+          <!-- OpenRouter APIキー -->
+          <div class="card" style="margin-bottom:1rem;">
+            <div class="card-header">
+              <h2><i class="ti ti-brain"></i>OpenRouter API設定</h2>
+              <span class="ai-badge badge-openrouter">深堀りAI</span>
+            </div>
+            <div class="alert alert-info" style="margin-bottom:1rem;">
+              <strong>取得方法：</strong> <a href="https://openrouter.ai/keys" target="_blank" style="color:inherit;text-decoration:underline;">OpenRouter</a> → 「Create Key」→ コピー（無料枠で使用）
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="openrouterKey">OpenRouter API キー</label>
+              <div style="display:flex;gap:8px;">
+                <input type="password" class="form-input" id="openrouterKey" placeholder="sk-or-..." style="flex:1;" />
+                <button class="btn-secondary" onclick="toggleVisibility('openrouterKey')"><i class="ti ti-eye"></i></button>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="modelSelect">使用モデル（無料）</label>
+              <select class="form-input" id="modelSelect">
+                <option value="mistralai/mistral-7b-instruct:free">Mistral 7B (無料・推奨)</option>
+                <option value="meta-llama/llama-3.1-8b-instruct:free">Llama 3.1 8B (無料)</option>
+                <option value="google/gemma-2-9b-it:free">Gemma 2 9B (無料)</option>
+                <option value="qwen/qwen-2-7b-instruct:free">Qwen 2 7B (無料)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Google スプレッドシート -->
+          <div class="card" style="margin-bottom:1rem;">
+            <div class="card-header">
+              <h2><i class="ti ti-table"></i>Googleスプレッドシート設定</h2>
+              <span style="font-size:10px;padding:2px 8px;border-radius:20px;background:var(--accent-green-light);color:var(--accent-green);">自動保存</span>
+            </div>
+            <div class="alert alert-info" style="margin-bottom:1rem;">
+              <strong>設定手順：</strong> GASスクリプトをデプロイしてURLを貼り付けてください。<br>
+              <a href="#" onclick="showGasInstructions()" style="color:inherit;text-decoration:underline;">📋 GASスクリプトと設定手順を見る</a>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="gasUrl">GAS デプロイURL</label>
+              <input type="text" class="form-input" id="gasUrl" placeholder="https://script.google.com/macros/s/.../exec" />
+              <div class="form-hint">未設定でもアプリは動作します（スプレッドシート保存がスキップされます）</div>
+            </div>
+          </div>
+
+          <!-- GAS手順モーダル風エリア -->
+          <div id="gasInstructions" class="card" style="display:none;margin-bottom:1rem;border:2px solid var(--accent-green);">
+            <div class="card-header">
+              <h2><i class="ti ti-code"></i>GASスクリプト設定手順</h2>
+              <button onclick="document.getElementById('gasInstructions').style.display='none'" class="btn-secondary" style="font-size:12px;padding:4px 10px;">閉じる</button>
+            </div>
+            <ol style="font-size:13px;line-height:2;padding-left:1.2rem;color:var(--text-primary);">
+              <li><a href="https://sheets.new" target="_blank" style="color:var(--accent-blue);">sheets.new</a> で新しいスプレッドシートを作成</li>
+              <li>「拡張機能」→「Apps Script」を開く</li>
+              <li>下のコードをコピーして貼り付け、保存（Ctrl+S）</li>
+              <li>「デプロイ」→「新しいデプロイ」→「ウェブアプリ」</li>
+              <li>「アクセスできるユーザー」を「全員」に設定</li>
+              <li>「デプロイ」ボタンを押してURLをコピー</li>
+            </ol>
+            <div style="background:var(--bg-base);border-radius:var(--radius-sm);padding:1rem;margin-top:0.75rem;position:relative;">
+              <pre id="gasCode" style="font-size:11px;font-family:monospace;overflow-x:auto;white-space:pre;color:var(--text-primary);line-height:1.6;"></pre>
+              <button onclick="copyGasCode()" class="btn-secondary" style="position:absolute;top:8px;right:8px;font-size:11px;padding:4px 10px;">
+                <i class="ti ti-copy"></i>コピー
+              </button>
+            </div>
+          </div>
+
+          <!-- 保存ボタン -->
+          <div style="display:flex;gap:10px;">
+            <button class="btn-primary" onclick="saveSettings()">
+              <i class="ti ti-device-floppy"></i>設定を保存
+            </button>
+            <button class="btn-secondary" onclick="clearSettings()">
+              <i class="ti ti-trash"></i>設定をリセット
+            </button>
+          </div>
+
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="../js/storage.js"></script>
+  <script>
+    const GAS_SCRIPT = `function doPost(e) {
+  try {
+    var data = JSON.parse(e.postData.contents);
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    
+    // ジャーナルシート
+    var journalSheet = ss.getSheetByName('ジャーナル') || ss.insertSheet('ジャーナル');
+    if (journalSheet.getLastRow() === 0) {
+      journalSheet.appendRow(['日時','日付','ジャーナル内容','タグ','要約','コーチングメッセージ','強み','トレンド','問題点','キャリア候補','深堀り分析']);
+    }
+    journalSheet.appendRow([
+      data.timestamp, data.date, data.journal_text, data.tags,
+      data.summary, data.coaching, data.strengths,
+      data.trends, data.problems, data.careers, data.deep_analysis
+    ]);
+    
+    return ContentService.createTextOutput(JSON.stringify({status:'ok'}))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch(err) {
+    return ContentService.createTextOutput(JSON.stringify({status:'error',message:err.message}))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}`;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSettings();
+      document.getElementById('gasCode').textContent = GAS_SCRIPT;
+      // メニュー
+      const toggle = document.getElementById('menuToggle');
+      const sidebar = document.getElementById('sidebar');
+      if (toggle && sidebar) {
+        toggle.addEventListener('click', () => sidebar.classList.toggle('open'));
+      }
+    });
+
+    function loadSettings() {
+      const s = Storage.getSettings();
+      document.getElementById('geminiKey').value = s.geminiApiKey || '';
+      document.getElementById('openrouterKey').value = s.openrouterApiKey || '';
+      document.getElementById('gasUrl').value = s.gasUrl || '';
+      const model = document.getElementById('modelSelect');
+      if (model && s.openrouterModel) model.value = s.openrouterModel;
+    }
+
+    function saveSettings() {
+      const settings = {
+        geminiApiKey: document.getElementById('geminiKey').value.trim(),
+        openrouterApiKey: document.getElementById('openrouterKey').value.trim(),
+        gasUrl: document.getElementById('gasUrl').value.trim(),
+        openrouterModel: document.getElementById('modelSelect').value,
+      };
+      Storage.saveSettings(settings);
+      showAlert('設定を保存しました', 'success');
+    }
+
+    function clearSettings() {
+      if (!confirm('設定をリセットしますか？')) return;
+      Storage.saveSettings({ geminiApiKey:'', openrouterApiKey:'', gasUrl:'', openrouterModel:'mistralai/mistral-7b-instruct:free' });
+      loadSettings();
+      showAlert('設定をリセットしました', '');
+    }
+
+    async function testGemini() {
+      const key = document.getElementById('geminiKey').value.trim();
+      if (!key) { showAlert('APIキーを入力してください', 'error'); return; }
+      const btn = document.getElementById('testGeminiBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="ti ti-loader-2"></i>テスト中...';
+      try {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts: [{ text: 'こんにちは' }] }] })
+        });
+        if (res.ok) {
+          showAlert('✓ Gemini APIキーの接続に成功しました！', 'success');
+        } else {
+          const err = await res.json();
+          showAlert('エラー: ' + (err.error?.message || res.status), 'error');
+        }
+      } catch(e) {
+        showAlert('接続エラー: ' + e.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="ti ti-plug"></i>テスト';
+      }
+    }
+
+    function toggleVisibility(id) {
+      const el = document.getElementById(id);
+      if (el) el.type = el.type === 'password' ? 'text' : 'password';
+    }
+
+    function showGasInstructions() {
+      const el = document.getElementById('gasInstructions');
+      if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function copyGasCode() {
+      navigator.clipboard.writeText(GAS_SCRIPT).then(() => showAlert('コードをコピーしました', 'success'));
+    }
+
+    function showAlert(msg, type) {
+      const area = document.getElementById('alertArea');
+      if (!area) return;
+      area.innerHTML = `<div class="alert alert-${type === 'success' ? 'success' : type === 'error' ? 'error' : 'info'}" style="margin-bottom:1rem;">${msg}</div>`;
+      setTimeout(() => { area.innerHTML = ''; }, 4000);
+    }
+  </script>
+</body>
+</html>
