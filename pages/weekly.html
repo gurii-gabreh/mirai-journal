@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>週次レポート — Mirai Journal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" />
+  <link rel="stylesheet" href="../css/style.css" />
+  <style>
+    .report-section { margin-bottom: 1rem; }
+    .progress-ring { position: relative; width: 100px; height: 100px; flex-shrink: 0; }
+    .progress-ring svg { transform: rotate(-90deg); }
+    .progress-ring .ring-text { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .ring-pct { font-size: 22px; font-weight: 700; color: var(--text-primary); line-height: 1; }
+    .ring-label { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+
+    .demand-bar { margin-bottom: 14px; }
+    .demand-row { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+    .demand-year { font-size: 11px; color: var(--text-muted); width: 40px; flex-shrink: 0; }
+    .demand-track { flex: 1; height: 8px; background: var(--bg-base); border-radius: 4px; overflow: hidden; }
+    .demand-fill { height: 100%; border-radius: 4px; transition: width 1s ease; }
+    .demand-pct { font-size: 12px; font-weight: 500; width: 36px; text-align: right; }
+
+    .skill-item { padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 8px; }
+    .skill-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .skill-name { font-size: 13px; font-weight: 500; }
+    .skill-levels { display: flex; gap: 6px; align-items: center; font-size: 11px; color: var(--text-muted); }
+    .skill-arrow { color: var(--accent-blue); }
+
+    .timeline-item { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .timeline-item:last-child { border-bottom: none; }
+    .timeline-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
+    .timeline-content { flex: 1; }
+    .timeline-title { font-size: 13px; font-weight: 500; color: var(--text-primary); }
+    .timeline-desc { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+    .derived-career { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+    .derived-career:last-child { border-bottom: none; }
+
+    .start-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 3rem; text-align: center; }
+    .start-btn i { font-size: 48px; color: var(--text-muted); opacity: 0.4; }
+
+    .overall-card { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-radius: var(--radius); padding: 1.5rem; color: white; margin-bottom: 1rem; }
+    .overall-title { font-size: 12px; opacity: 0.6; margin-bottom: 0.5rem; }
+    .overall-score { font-size: 48px; font-weight: 700; line-height: 1; }
+    .overall-assessment { font-size: 13px; opacity: 0.8; margin-top: 0.75rem; line-height: 1.6; }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <span class="logo-icon"><i class="ti ti-compass"></i></span>
+          <span class="logo-text">Mirai<br><em>Journal</em></span>
+        </div>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">メイン</div>
+        <a href="../index.html" class="nav-item"><i class="ti ti-layout-dashboard"></i><span>ダッシュボード</span></a>
+        <a href="journal.html" class="nav-item"><i class="ti ti-pencil"></i><span>今日のジャーナル</span></a>
+        <a href="goals.html" class="nav-item"><i class="ti ti-target"></i><span>目標一覧</span></a>
+        <a href="analysis.html" class="nav-item"><i class="ti ti-chart-radar"></i><span>自己分析</span></a>
+        <a href="trends.html" class="nav-item"><i class="ti ti-world-search"></i><span>トレンド記録</span></a>
+        <a href="career.html" class="nav-item"><i class="ti ti-rocket"></i><span>キャリア候補</span></a>
+        <a href="weekly.html" class="nav-item active"><i class="ti ti-calendar-stats"></i><span>週次レポート</span></a>
+        <div class="nav-section-label">設定</div>
+        <a href="settings.html" class="nav-item"><i class="ti ti-settings"></i><span>API設定</span></a>
+      </nav>
+    </aside>
+
+    <main class="main-content">
+      <header class="top-header">
+        <button class="menu-toggle" id="menuToggle"><i class="ti ti-menu-2"></i></button>
+        <div class="header-title">
+          <h1>週次レポート</h1>
+          <span class="header-date" id="headerDate"></span>
+        </div>
+        <button class="header-cta" id="generateBtn" onclick="generateReport()">
+          <i class="ti ti-sparkles"></i>週次分析を実行
+        </button>
+      </header>
+
+      <div class="content-body" id="contentBody">
+        <!-- 初期状態 -->
+        <div class="card" id="initialState">
+          <div class="start-btn">
+            <i class="ti ti-calendar-stats"></i>
+            <div>
+              <div style="font-size:16px;font-weight:500;color:var(--text-primary);margin-bottom:8px;">週次レポートを生成する</div>
+              <div style="font-size:13px;color:var(--text-muted);margin-bottom:1.5rem;line-height:1.6;">
+                目標への達成度・不足スキル・市場需要・派生キャリアを<br>AIが総合分析します（辛口+フォロー）
+              </div>
+              <button class="btn-primary" onclick="generateReport()" style="font-size:14px;padding:10px 24px;">
+                <i class="ti ti-sparkles"></i>週次分析を実行する
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 処理中 -->
+        <div class="card" id="loadingState" style="display:none;">
+          <div class="start-btn">
+            <div class="loading-dots"><span></span><span></span><span></span></div>
+            <div style="font-size:14px;color:var(--text-muted);" id="loadingMsg">Geminiが分析中...</div>
+          </div>
+        </div>
+
+        <!-- レポート結果 -->
+        <div id="reportResult" style="display:none;">
+
+          <!-- 総合スコア -->
+          <div class="overall-card" id="overallCard"></div>
+
+          <!-- 目標別レポート -->
+          <div id="goalReports"></div>
+
+          <!-- キャリア市場需要 -->
+          <div class="card report-section" id="careerDemandCard">
+            <div class="card-header">
+              <h2><i class="ti ti-chart-line"></i>キャリア市場需要分析</h2>
+              <span class="ai-badge badge-gemini">Gemini</span>
+            </div>
+            <div id="careerDemandContent"></div>
+          </div>
+
+          <!-- 週次コーチング -->
+          <div class="card report-section" id="weeklyCoachingCard">
+            <div class="card-header">
+              <h2><i class="ti ti-message-circle"></i>週次コーチングメッセージ</h2>
+            </div>
+            <div id="weeklyCoachingContent" style="font-size:13px;line-height:1.8;color:var(--text-primary);"></div>
+          </div>
+
+          <!-- 再実行ボタン -->
+          <div style="text-align:center;padding:1rem;">
+            <button class="btn-secondary" onclick="generateReport()">
+              <i class="ti ti-refresh"></i>再分析する
+            </button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="../js/storage.js"></script>
+  <script src="../js/gemini.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const toggle = document.getElementById('menuToggle');
+      const sidebar = document.getElementById('sidebar');
+      if (toggle && sidebar) toggle.addEventListener('click', () => sidebar.classList.toggle('open'));
+      const el = document.getElementById('headerDate');
+      if (el) el.textContent = new Date().toLocaleDateString('ja-JP', { year:'numeric', month:'long', day:'numeric', weekday:'long' });
+    });
+
+    async function generateReport() {
+      const settings = Storage.getSettings();
+      if (!settings.geminiApiKey) {
+        showToast('Gemini APIキーを設定してください', 'error');
+        setTimeout(() => { window.location.href = 'settings.html'; }, 2000);
+        return;
+      }
+
+      const goals = Storage.getGoals();
+      if (!goals.length) {
+        showToast('目標を登録してから実行してください', 'error');
+        setTimeout(() => { window.location.href = 'goals.html'; }, 2000);
+        return;
+      }
+
+      const journals = Storage.getJournals();
+      if (journals.length < 1) {
+        showToast('ジャーナルを記録してから実行してください', 'error');
+        return;
+      }
+
+      // UI切替
+      document.getElementById('initialState').style.display = 'none';
+      document.getElementById('reportResult').style.display = 'none';
+      document.getElementById('loadingState').style.display = 'block';
+
+      const btn = document.getElementById('generateBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite;"></i>分析中...';
+
+      try {
+        setLoading('Geminiが過去のジャーナルを分析中...');
+        const result = await GeminiAPI.weeklyAnalyze(journals, goals, settings.geminiApiKey);
+
+        setLoading('レポートを生成中...');
+        renderReport(result);
+
+        document.getElementById('loadingState').style.display = 'none';
+        document.getElementById('reportResult').style.display = 'block';
+        showToast('週次レポートが完成しました！', 'success');
+
+      } catch(e) {
+        console.error(e);
+        document.getElementById('loadingState').style.display = 'none';
+        document.getElementById('initialState').style.display = 'block';
+        showToast('エラー: ' + e.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="ti ti-sparkles"></i>週次分析を実行';
+      }
+    }
+
+    function setLoading(msg) {
+      const el = document.getElementById('loadingMsg');
+      if (el) el.textContent = msg;
+    }
+
+    function renderReport(r) {
+      // 総合スコア
+      const overall = document.getElementById('overallCard');
+      overall.innerHTML = `
+        <div style="display:flex;align-items:center;gap:2rem;flex-wrap:wrap;">
+          <div>
+            <div class="overall-title">今週の総合達成度</div>
+            <div class="overall-score">${r.overallProgress || 0}<span style="font-size:24px;">%</span></div>
+          </div>
+          <div style="flex:1;">
+            <div class="overall-assessment">${esc(r.overallAssessment || '')}</div>
+          </div>
+        </div>
+      `;
+
+      // 目標別レポート
+      const goalReports = document.getElementById('goalReports');
+      goalReports.innerHTML = (r.goalReports || []).map(gr => {
+        const pct = gr.progress || 0;
+        const color = pct >= 70 ? '#0f9e6e' : pct >= 40 ? '#d97706' : '#e74c3c';
+        const circumference = 2 * Math.PI * 40;
+        const offset = circumference * (1 - pct / 100);
+
+        return `
+        <div class="card report-section">
+          <div class="card-header">
+            <h2><i class="ti ti-target"></i>${esc(gr.goalTitle)}</h2>
+            ${gr.achieved ? '<span style="font-size:11px;padding:2px 8px;border-radius:20px;background:var(--accent-green-light);color:var(--accent-green);">✅ 達成済み</span>' : ''}
+          </div>
+
+          <div style="display:flex;gap:1.5rem;flex-wrap:wrap;margin-bottom:1rem;">
+            <!-- 進捗リング -->
+            <div class="progress-ring">
+              <svg width="100" height="100" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="40" fill="none" stroke="var(--bg-base)" stroke-width="8"/>
+                <circle cx="50" cy="50" r="40" fill="none" stroke="${color}" stroke-width="8"
+                  stroke-dasharray="${circumference}" stroke-dashoffset="${offset}" stroke-linecap="round"/>
+              </svg>
+              <div class="ring-text">
+                <div class="ring-pct" style="color:${color};">${pct}%</div>
+                <div class="ring-label">達成度</div>
+              </div>
+            </div>
+
+            <div style="flex:1;min-width:200px;">
+              <!-- 良かった点 -->
+              ${(gr.goodPoints || []).length ? `
+                <div style="margin-bottom:8px;">
+                  <div style="font-size:11px;font-weight:500;color:var(--accent-green);margin-bottom:4px;">✅ 良かった点</div>
+                  ${gr.goodPoints.map(p => `<div style="font-size:12px;color:var(--text-primary);padding:2px 0;">・${esc(p)}</div>`).join('')}
+                </div>
+              ` : ''}
+              <!-- 問題点 -->
+              ${(gr.problems || []).length ? `
+                <div>
+                  <div style="font-size:11px;font-weight:500;color:#e74c3c;margin-bottom:4px;">⚠️ 問題点（辛口）</div>
+                  ${gr.problems.map(p => `<div style="font-size:12px;color:var(--text-primary);padding:2px 0;">・${esc(p)}</div>`).join('')}
+                </div>
+              ` : ''}
+            </div>
+          </div>
+
+          <!-- 不足スキル -->
+          ${(gr.requiredSkills || []).length ? `
+            <div style="margin-bottom:1rem;">
+              <div style="font-size:12px;font-weight:500;color:var(--text-secondary);margin-bottom:8px;"><i class="ti ti-tool"></i> 不足スキルと習得アプローチ</div>
+              ${gr.requiredSkills.map(s => `
+                <div class="skill-item">
+                  <div class="skill-header">
+                    <span class="skill-name">${esc(s.skill)}</span>
+                    <div class="skill-levels">
+                      <span>現在 ${s.currentLevel}%</span>
+                      <span class="skill-arrow">→</span>
+                      <span style="color:var(--accent-blue);">目標 ${s.requiredLevel}%</span>
+                    </div>
+                  </div>
+                  <div style="height:5px;background:var(--bg-base);border-radius:3px;margin-bottom:8px;">
+                    <div style="height:100%;width:${s.currentLevel}%;background:var(--accent-blue);border-radius:3px;"></div>
+                  </div>
+                  <div style="font-size:12px;color:var(--text-secondary);">📚 ${esc(s.approach)}</div>
+                  <div style="font-size:11px;color:var(--accent-amber);margin-top:4px;">⏰ ${esc(s.deadline)}</div>
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
+
+          <!-- タイムライン -->
+          ${gr.timeline ? `
+            <div style="padding:10px;background:var(--bg-base);border-radius:var(--radius-sm);font-size:12px;color:var(--text-secondary);line-height:1.6;">
+              <i class="ti ti-clock"></i> <strong>タイムライン予測：</strong>${esc(gr.timeline)}
+            </div>
+          ` : ''}
+        </div>
+        `;
+      }).join('');
+
+      // キャリア市場需要
+      const careerContent = document.getElementById('careerDemandContent');
+      careerContent.innerHTML = (r.careerDemand || []).map(cd => `
+        <div style="margin-bottom:1.5rem;padding-bottom:1.5rem;border-bottom:1px solid var(--border);">
+          <div style="font-size:15px;font-weight:500;margin-bottom:12px;">${esc(cd.career)}</div>
+
+          <div class="demand-bar">
+            <div class="demand-row">
+              <span class="demand-year">現在</span>
+              <div class="demand-track"><div class="demand-fill" style="width:${cd.currentDemand||0}%;background:#2563eb;"></div></div>
+              <span class="demand-pct" style="color:#2563eb;">${cd.currentDemand||0}%</span>
+            </div>
+            <div class="demand-row">
+              <span class="demand-year">5年後</span>
+              <div class="demand-track"><div class="demand-fill" style="width:${cd.demand5years||0}%;background:#0f9e6e;"></div></div>
+              <span class="demand-pct" style="color:#0f9e6e;">${cd.demand5years||0}%</span>
+            </div>
+            <div class="demand-row">
+              <span class="demand-year">10年後</span>
+              <div class="demand-track"><div class="demand-fill" style="width:${cd.demand10years||0}%;background:#7c3aed;"></div></div>
+              <span class="demand-pct" style="color:#7c3aed;">${cd.demand10years||0}%</span>
+            </div>
+          </div>
+
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px;">${esc(cd.reason||'')}</div>
+
+          <!-- 派生キャリア -->
+          ${(cd.derivedCareers || []).length ? `
+            <div style="background:var(--bg-base);border-radius:var(--radius-sm);padding:10px;">
+              <div style="font-size:11px;font-weight:500;color:var(--text-muted);margin-bottom:8px;">派生キャリア候補</div>
+              ${cd.derivedCareers.map(dc => `
+                <div class="derived-career">
+                  <div style="flex:1;">
+                    <div style="font-size:13px;font-weight:500;">${esc(dc.name)}</div>
+                    <div style="font-size:11px;color:var(--text-muted);">${esc(dc.reason||'')}</div>
+                  </div>
+                  <div style="text-align:right;flex-shrink:0;">
+                    <div style="font-size:11px;color:var(--text-muted);">5年後</div>
+                    <div style="font-size:13px;font-weight:500;color:#0f9e6e;">${dc.demand5years||0}%</div>
+                    <div style="font-size:11px;color:var(--text-muted);">10年後</div>
+                    <div style="font-size:13px;font-weight:500;color:#7c3aed;">${dc.demand10years||0}%</div>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
+        </div>
+      `).join('');
+
+      // 週次コーチング
+      const coaching = document.getElementById('weeklyCoachingContent');
+      coaching.innerHTML = esc(r.weeklyCoaching || '').replace(/\n/g, '<br>');
+    }
+
+    function showToast(msg, type) {
+      document.querySelectorAll('.toast').forEach(e => e.remove());
+      const t = document.createElement('div');
+      t.className = 'toast ' + (type==='success'?'success':type==='error'?'error':'');
+      t.textContent = msg;
+      document.body.appendChild(t);
+      setTimeout(() => t.remove(), 3500);
+    }
+
+    function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    const style = document.createElement('style');
+    style.textContent = `@keyframes spin { to { transform: rotate(360deg); } }`;
+    document.head.appendChild(style);
+  </script>
+</body>
+</html>
