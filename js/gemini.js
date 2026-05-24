@@ -60,11 +60,7 @@ ${journalText}
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 4096,
-          responseMimeType: 'application/json',
-        }
+        generationConfig: { temperature: 0.7, maxOutputTokens: 4096, responseMimeType: 'application/json' }
       })
     });
 
@@ -81,10 +77,9 @@ ${journalText}
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error('JSON形式の応答が得られませんでした');
 
-    try {
-      return JSON.parse(jsonMatch[0]);
-    } catch(e) {
-      const cleaned = jsonMatch[0].replace(/```json/g, '').replace(/```/g, '').trim();
+    try { return JSON.parse(jsonMatch[0]); }
+    catch(e) {
+      const cleaned = jsonMatch[0].replace(/```json/g,'').replace(/```/g,'').trim();
       return JSON.parse(cleaned);
     }
   },
@@ -150,11 +145,7 @@ ${journalSummary}
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 8192,
-          responseMimeType: 'application/json',
-        }
+        generationConfig: { temperature: 0.7, maxOutputTokens: 8192, responseMimeType: 'application/json' }
       })
     });
 
@@ -171,10 +162,96 @@ ${journalSummary}
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error('JSON形式の応答が得られませんでした');
 
-    try {
-      return JSON.parse(jsonMatch[0]);
-    } catch(e) {
-      const cleaned = jsonMatch[0].replace(/```json/g, '').replace(/```/g, '').trim();
+    try { return JSON.parse(jsonMatch[0]); }
+    catch(e) {
+      const cleaned = jsonMatch[0].replace(/```json/g,'').replace(/```/g,'').trim();
+      return JSON.parse(cleaned);
+    }
+  },
+
+  // 自己分析（強み割合・弱み分析）
+  async analyzeSelf(journals, apiKey) {
+    if (!apiKey) throw new Error('Gemini APIキーが設定されていません');
+
+    const journalText = journals.slice(0, 30).map(j =>
+      `[${new Date(j.date).toLocaleDateString('ja-JP')}] ${j.text.slice(0, 300)}`
+    ).join('\n\n');
+
+    const prompt = `
+あなたは心理分析とキャリア分析の専門家です。
+以下の複数のジャーナルエントリーを総合的に分析し、その人の強みと弱みを深く分析してください。
+
+【ジャーナル一覧】
+${journalText}
+
+【分析方針】
+- 強みは全項目の合計が必ず100になるよう割合（ratio）で表現する
+- 特化している強みは具体的なジャーナルの記述を根拠として示す
+- 弱みは「外観からの弱み」（文章から直接読み取れるもの）と「潜在的な弱み」（強みの裏返しや行動パターンから推測）に分ける
+- 全て具体例（ジャーナルの内容を引用・参照）を添えること
+- 辛口だが必ずフォローを入れること
+
+【出力形式】
+バッククォート不要。以下のJSONのみ出力。
+
+{
+  "strengths": [
+    {
+      "name": "強みの名前",
+      "ratio": 35,
+      "description": "この強みの説明",
+      "specificExample": "具体的な例（ジャーナルの内容を参照）",
+      "isSpecialized": true
+    }
+  ],
+  "weaknesses": {
+    "visible": [
+      {
+        "name": "外観からの弱み名",
+        "description": "弱みの説明（辛口）",
+        "specificExample": "具体的な例（ジャーナルの内容を参照）",
+        "follow": "改善のためのフォロー・アドバイス"
+      }
+    ],
+    "potential": [
+      {
+        "name": "潜在的な弱み名",
+        "description": "なぜこの弱みが潜在しているか（強みの裏返し等）",
+        "specificExample": "具体的な根拠",
+        "follow": "意識すべきこと・改善策"
+      }
+    ]
+  },
+  "overallComment": "総合コメント（辛口+フォロー）",
+  "specialization": "最も特化している点とその理由（具体例付き）"
+}
+`;
+
+    const res = await fetch(`${this.BASE_URL}?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.7, maxOutputTokens: 4096, responseMimeType: 'application/json' }
+      })
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error?.message || `Gemini APIエラー: ${res.status}`);
+    }
+
+    const data = await res.json();
+    const parts = data.candidates?.[0]?.content?.parts || [];
+    const text = parts.map(p => p.text || '').join('');
+    if (!text) throw new Error('Geminiから応答が得られませんでした');
+
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('JSON形式の応答が得られませんでした');
+
+    try { return JSON.parse(jsonMatch[0]); }
+    catch(e) {
+      const cleaned = jsonMatch[0].replace(/```json/g,'').replace(/```/g,'').trim();
       return JSON.parse(cleaned);
     }
   },
