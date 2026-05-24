@@ -3,18 +3,19 @@
 const OpenRouterAPI = {
   BASE_URL: 'https://openrouter.ai/api/v1/chat/completions',
 
-  // 利用可能な無料モデル一覧
+  // 2026年5月時点で利用可能な無料モデル一覧
   FREE_MODELS: [
-    { id: 'mistralai/mistral-7b-instruct:free', name: 'Mistral 7B (無料)' },
-    { id: 'meta-llama/llama-3.1-8b-instruct:free', name: 'Llama 3.1 8B (無料)' },
-    { id: 'google/gemma-2-9b-it:free', name: 'Gemma 2 9B (無料)' },
-    { id: 'qwen/qwen-2-7b-instruct:free', name: 'Qwen 2 7B (無料)' },
+    { id: 'openrouter/free', name: '自動選択（無料・推奨）' },
+    { id: 'meta-llama/llama-3.3-70b-instruct:free', name: 'Llama 3.3 70B (無料)' },
+    { id: 'deepseek/deepseek-r1:free', name: 'DeepSeek R1 (無料)' },
+    { id: 'qwen/qwen3-14b:free', name: 'Qwen3 14B (無料)' },
   ],
 
   async deepAnalyze(geminiResult, journalText, apiKey, model) {
     if (!apiKey) throw new Error('OpenRouter APIキーが設定されていません');
 
-    const usedModel = model || this.FREE_MODELS[0].id;
+    // デフォルトは自動選択（openrouter/free）
+    const usedModel = model || 'openrouter/free';
 
     const prompt = `
 あなたはキャリアコンサルタントかつ未来洞察の専門家です。
@@ -41,7 +42,7 @@ ${JSON.stringify(geminiResult, null, 2)}
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`,
-        'HTTP-Referer': 'https://mirai-journal.app',
+        'HTTP-Referer': 'https://gurii-gabreh.github.io/mirai-journal/',
         'X-Title': 'Mirai Journal',
       },
       body: JSON.stringify({
