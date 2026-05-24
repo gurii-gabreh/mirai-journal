@@ -14,7 +14,7 @@ const GeminiAPI = {
 ${journalText}
 
 【出力形式】
-以下のJSON形式のみで回答してください。余計なテキストや\`\`\`は不要です。
+以下のJSON形式のみで回答してください。余計なテキストやバッククォートは不要です。
 
 {
   "summary": "ジャーナルの要約（2〜3文）",
@@ -43,7 +43,8 @@ ${journalText}
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
           temperature: 0.7,
-          maxOutputTokens: 2048,
+          maxOutputTokens: 4096,
+          responseMimeType: 'application/json',
         }
       })
     });
@@ -54,11 +55,26 @@ ${journalText}
     }
 
     const data = await res.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
-    // JSON部分を抽出してパース
+    // 全partsのtextを結合（thinking機能対応）
+    const parts = data.candidates?.[0]?.content?.parts || [];
+    const text = parts.map(p => p.text || '').join('');
+
+    if (!text) throw new Error('Geminiから応答が得られませんでした');
+
+    // JSON部分を抽出（最初の{から最後の}まで）
     const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('Geminiの応答をパースできませんでした');
-    return JSON.parse(jsonMatch[0]);
+    if (!jsonMatch) throw new Error('JSON形式の応答が得られませんでした');
+
+    try {
+      return JSON.parse(jsonMatch[0]);
+    } catch(e) {
+      // バッククォートや余分な文字を除去して再試行
+      const cleaned = jsonMatch[0]
+        .replace(/```json/g, '')
+        .replace(/```/g, '')
+        .trim();
+      return JSON.parse(cleaned);
+    }
   },
 };
