@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initCharCount();
   initButtons();
   checkApiStatus();
+  loadGoalSelector();
 });
 
 function initDate() {
@@ -56,6 +57,35 @@ function initButtons() {
   if (saveOnlyBtn) saveOnlyBtn.addEventListener('click', saveOnly);
 }
 
+// 目標セレクター読み込み
+function loadGoalSelector() {
+  const container = document.getElementById('goalSelectorArea');
+  if (!container) return;
+  const goals = Storage.getGoals().filter(g => !g.achieved);
+  if (!goals.length) {
+    container.innerHTML = `<div style="font-size:12px;color:var(--text-muted);">
+      目標が未設定です。<a href="goals.html" style="color:var(--accent-blue);">目標を登録する →</a>
+    </div>`;
+    return;
+  }
+  container.innerHTML = `
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;">📎 今日のジャーナルを紐づける目標（複数選択可）</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;">
+      ${goals.map(g => `
+        <label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;padding:4px 10px;border:1px solid var(--border-strong);border-radius:20px;background:var(--bg-surface);">
+          <input type="checkbox" name="goalCheck" value="${g.id}" style="accent-color:var(--accent-blue);"> ${esc(g.title.slice(0,20))}${g.title.length>20?'...':''}
+        </label>
+      `).join('')}
+    </div>
+  `;
+}
+
+function getSelectedGoals() {
+  const checked = document.querySelectorAll('input[name="goalCheck"]:checked');
+  const goalIds = Array.from(checked).map(c => c.value);
+  return Storage.getGoals().filter(g => goalIds.includes(g.id));
+}
+
 function checkApiStatus() {
   const settings = Storage.getSettings();
   const dot = document.getElementById('gemini-status-dot');
@@ -74,10 +104,7 @@ function checkApiStatus() {
 async function runPipeline() {
   const textarea = document.getElementById('journalText');
   const text = textarea?.value?.trim();
-  if (!text || text.length < 20) {
-    showAlert('20文字以上のジャーナルを入力してください', 'error');
-    return;
-  }
+  if (!text || text.length < 20) { showAlert('20文字以上のジャーナルを入力してください', 'error'); return; }
 
   const settings = Storage.getSettings();
   if (!settings.geminiApiKey) {
@@ -90,33 +117,64 @@ async function runPipeline() {
   analyzeBtn.disabled = true;
   analyzeBtn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite;"></i>処理中...';
 
-  // パイプライン表示
   const pipelineCard = document.getElementById('pipelineCard');
   if (pipelineCard) pipelineCard.style.display = 'block';
 
-  const journalEntry = { text, date: new Date().toISOString(), tags: [] };
+  const selectedGoals = getSelectedGoals();
+  const journalId = 'j_' + Date.now();
+  const journalEntry = { id: journalId, text, date: new Date().toISOString(), tags: [], goalIds: selectedGoals.map(g=>g.id) };
   let geminiResult = null;
   let deepAnalysis = '';
 
   try {
-    // Step1: 入力完了
     setStep(1, 'done');
 
-    // Step2: Gemini分析
+    // Step2: Gemini分析（辛口+フォロー）
     setStep(2, 'active');
-    geminiResult = await GeminiAPI.analyze(text, settings.geminiApiKey);
+    geminiResult = await GeminiAPI.analyze(text, settings.geminiApiKey, selectedGoals);
     journalEntry.tags = geminiResult.tags || [];
     setStep(2, 'done');
 
-    // Gemini結果を画面に表示
+    // 結果表示
     showResultArea();
     renderGeminiResult(geminiResult);
 
     // ローカル保存
     Storage.saveJournal(journalEntry);
     Storage.saveStrengths(mergeStrengths(geminiResult.strengths || []));
-    (geminiResult.trends || []).forEach(t => Storage.saveTrend({ ...t, date: journalEntry.date }));
+
+    // トレンド保存（目標紐付き）
+    (geminiResult.trends || []).forEach(t => {
+      // 目標タイトルからIDを逆引き
+      const matchGoal = selectedGoals.find(g => g.title === t.goalTitle);
+      Storage.saveTrend({
+        ...t,
+        date: journalEntry.date,
+        journalId,
+        goalId: matchGoal?.id || null,
+        goalName: matchGoal?.title || t.goalTitle || null,
+      });
+    });
     Storage.saveCareers(mergeCareers(geminiResult.careers || []));
+
+    // 目標進捗を更新
+    if (selectedGoals.length && geminiResult.goalProgress) {
+      geminiResult.goalProgress.forEach(gp => {
+        const matchGoal = selectedGoals.find(g => g.title === gp.goalTitle);
+        if (matchGoal) {
+          Storage.addGoalHistory(matchGoal.id, {
+            journalId,
+            date: journalEntry.date,
+            journalText: text.slice(0, 200),
+            achievementScore: gp.achievementScore || 0,
+            assessment: gp.assessment || '',
+            approach: gp.approach || '',
+            goodPoints: (geminiResult.goodPoints || []).map(p => p.point),
+            problems: geminiResult.problems || [],
+          });
+        }
+      });
+    }
 
     // Step3: スプレッドシート保存
     setStep(3, 'active');
@@ -126,7 +184,7 @@ async function runPipeline() {
         await SheetsAPI.save(settings.gasUrl, payload);
         setStep(3, 'done');
       } catch(e) {
-        console.warn('スプレッドシート保存エラー（続行）:', e.message);
+        console.warn('スプレッドシート保存エラー:', e.message);
         setStepError(3, 'スキップ');
       }
     } else {
@@ -140,8 +198,6 @@ async function runPipeline() {
         deepAnalysis = await OpenRouterAPI.deepAnalyze(geminiResult, text, settings.openrouterApiKey, settings.openrouterModel);
         renderDeepAnalysis(deepAnalysis);
         setStep(4, 'done');
-
-        // Step3: スプレッドシートを深堀り含めて更新
         if (settings.gasUrl) {
           try {
             const payload = SheetsAPI.buildPayload(journalEntry, geminiResult, deepAnalysis);
@@ -149,20 +205,18 @@ async function runPipeline() {
           } catch(e) { console.warn('スプレッドシート更新エラー:', e.message); }
         }
       } catch(e) {
-        console.warn('OpenRouterエラー:', e.message);
         renderDeepAnalysis('⚠️ OpenRouter分析に失敗しました: ' + e.message);
         setStepError(4, 'エラー');
       }
     } else {
-      renderDeepAnalysis('ℹ️ OpenRouter APIキーが未設定のため、深堀り分析はスキップされました。\n設定ページでAPIキーを登録すると利用できます。');
+      renderDeepAnalysis('ℹ️ OpenRouter APIキーが未設定のため深堀り分析はスキップされました。');
       setStepError(4, '未設定');
     }
 
-    // Step5: 完了
     setStep(5, 'done');
     showAlert('分析が完了しました！', 'success');
 
-  } catch (e) {
+  } catch(e) {
     console.error('パイプラインエラー:', e);
     showAlert('エラー: ' + e.message, 'error');
   } finally {
@@ -175,7 +229,8 @@ function saveOnly() {
   const textarea = document.getElementById('journalText');
   const text = textarea?.value?.trim();
   if (!text) { showAlert('内容を入力してください', 'error'); return; }
-  Storage.saveJournal({ text, date: new Date().toISOString(), tags: [] });
+  const journalId = 'j_' + Date.now();
+  Storage.saveJournal({ id: journalId, text, date: new Date().toISOString(), tags: [] });
   showAlert('保存しました', 'success');
   setTimeout(() => { window.location.href = '../index.html'; }, 1500);
 }
@@ -184,7 +239,7 @@ function saveOnly() {
 function setStep(n, status) {
   const el = document.getElementById('step' + n);
   if (!el) return;
-  el.classList.remove('active', 'done', 'error');
+  el.classList.remove('active','done');
   if (status === 'active') el.classList.add('active');
   if (status === 'done') el.classList.add('done');
   const s = el.querySelector('.step-status');
@@ -207,48 +262,68 @@ function renderGeminiResult(r) {
   setText('resultSummary', r.summary || '');
   setText('resultCoaching', r.coaching || '');
 
+  // 良かった点
+  const goodEl = document.getElementById('resultGoodPoints');
+  if (goodEl && r.goodPoints) {
+    goodEl.innerHTML = r.goodPoints.map(p => `
+      <div style="display:flex;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);">
+        <span style="color:var(--accent-green);font-size:16px;flex-shrink:0;">✓</span>
+        <div>
+          <div style="font-size:13px;font-weight:500;">${esc(p.point)}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${esc(p.reason||'')}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // 問題点（辛口+フォロー）
+  const probEl = document.getElementById('resultProblems');
+  if (probEl && r.problems) {
+    probEl.innerHTML = r.problems.map(p => `
+      <div style="padding:10px;background:#fff9f9;border-left:3px solid #e74c3c;border-radius:4px;margin-bottom:8px;">
+        <div style="font-size:13px;font-weight:500;color:#c0392b;">⚠ ${esc(p.point)}</div>
+        <div style="font-size:12px;color:var(--accent-green);margin-top:6px;">→ ${esc(p.follow||'')}</div>
+      </div>
+    `).join('');
+  }
+
+  // 目標進捗
+  const goalEl = document.getElementById('resultGoalProgress');
+  if (goalEl && r.goalProgress) {
+    goalEl.innerHTML = r.goalProgress.map(gp => {
+      const sc = gp.achievementScore || 0;
+      const color = sc >= 70 ? '#0f9e6e' : sc >= 40 ? '#d97706' : '#e74c3c';
+      return `
+        <div style="padding:10px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <span style="font-size:13px;font-weight:500;">${esc(gp.goalTitle)}</span>
+            <span style="font-size:13px;font-weight:700;color:${color};">${sc}%</span>
+          </div>
+          <div style="height:4px;background:var(--bg-base);border-radius:2px;margin-bottom:8px;">
+            <div style="height:100%;width:${sc}%;background:${color};border-radius:2px;"></div>
+          </div>
+          <div style="font-size:12px;color:var(--text-secondary);">${esc(gp.assessment||'')}</div>
+          ${gp.approach ? `<div style="font-size:12px;color:var(--accent-blue);margin-top:4px;">→ ${esc(gp.approach)}</div>` : ''}
+        </div>
+      `;
+    }).join('');
+  }
+
   // 強み
   const strengthsEl = document.getElementById('resultStrengths');
   if (strengthsEl && r.strengths) {
     const colors = ['#0f9e6e','#2563eb','#7c3aed','#d97706','#888'];
-    strengthsEl.innerHTML = r.strengths.map((s, i) => `
+    strengthsEl.innerHTML = r.strengths.map((s,i) => `
       <div style="margin-bottom:10px;">
         <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">
-          <span style="font-weight:500;">${escHtml(s.name)}</span>
+          <span style="font-weight:500;">${esc(s.name)}</span>
           <span style="color:var(--text-muted);">${s.score}%</span>
         </div>
-        <div style="height:5px;background:var(--bg-base);border-radius:3px;overflow:hidden;margin-bottom:4px;">
+        <div style="height:5px;background:var(--bg-base);border-radius:3px;">
           <div style="height:100%;width:${s.score}%;background:${colors[i%colors.length]};border-radius:3px;"></div>
         </div>
-        <div style="font-size:11px;color:var(--text-muted);">${escHtml(s.reason || '')}</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${esc(s.reason||'')}</div>
       </div>
-    `).join('');
-  }
-
-  // トレンド
-  const trendsEl = document.getElementById('resultTrends');
-  if (trendsEl && r.trends) {
-    trendsEl.innerHTML = r.trends.map(t => `
-      <div style="display:flex;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);">
-        <span class="trend-relevance ${relevanceClass(t.relevance)}">${t.relevance || '中'}</span>
-        <div>
-          <div style="font-size:13px;font-weight:500;">${escHtml(t.title)}</div>
-          <div style="font-size:11px;color:var(--text-muted);">${escHtml(t.insight || '')}</div>
-        </div>
-      </div>
-    `).join('');
-  }
-
-  // キャリア候補
-  const careersEl = document.getElementById('resultCareers');
-  if (careersEl && r.careers) {
-    careersEl.innerHTML = r.careers.map((c, i) => `
-      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
-        <span style="font-size:12px;color:var(--text-muted);width:18px;">${i+1}</span>
-        <span style="font-size:13px;flex:1;">${escHtml(c.name)}</span>
-        <span class="career-score-badge">適合${c.score}%</span>
-      </div>
-      <div style="font-size:11px;color:var(--text-muted);padding:0 28px 6px;">${escHtml(c.reason || '')}</div>
     `).join('');
   }
 }
@@ -256,7 +331,6 @@ function renderGeminiResult(r) {
 function renderDeepAnalysis(text) {
   const el = document.getElementById('deepAnalysisArea');
   if (!el) return;
-  // Markdownライクな変換
   const html = text
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/^#{1,3}\s+(.+)$/gm, '<h3 style="font-size:14px;margin:12px 0 6px;">$1</h3>')
@@ -264,20 +338,15 @@ function renderDeepAnalysis(text) {
   el.innerHTML = `<div class="ai-result-text" style="line-height:1.8;">${html}</div>`;
 }
 
-// ===== データマージ =====
 function mergeStrengths(newStrengths) {
   const existing = Storage.getStrengths();
   const merged = [...existing];
   newStrengths.forEach(ns => {
     const idx = merged.findIndex(s => s.name === ns.name);
-    if (idx >= 0) {
-      // 既存があれば平均化
-      merged[idx].score = Math.round((merged[idx].score + ns.score) / 2);
-    } else {
-      merged.push(ns);
-    }
+    if (idx >= 0) merged[idx].score = Math.round((merged[idx].score + ns.score) / 2);
+    else merged.push(ns);
   });
-  return merged.sort((a, b) => b.score - a.score).slice(0, 20);
+  return merged.sort((a,b) => b.score - a.score).slice(0, 20);
 }
 
 function mergeCareers(newCareers) {
@@ -285,42 +354,26 @@ function mergeCareers(newCareers) {
   const merged = [...existing];
   newCareers.forEach(nc => {
     const idx = merged.findIndex(c => c.name === nc.name);
-    if (idx >= 0) {
-      merged[idx].score = Math.round((merged[idx].score + nc.score) / 2);
-    } else {
-      merged.push(nc);
-    }
+    if (idx >= 0) merged[idx].score = Math.round((merged[idx].score + nc.score) / 2);
+    else merged.push(nc);
   });
-  return merged.sort((a, b) => b.score - a.score).slice(0, 20);
+  return merged.sort((a,b) => b.score - a.score).slice(0, 20);
 }
 
-// ===== ユーティリティ =====
 function setText(id, text) {
   const el = document.getElementById(id);
   if (el) el.textContent = text;
 }
-function escHtml(str) {
-  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-function relevanceClass(r) {
-  if (r === '高') return 'relevance-high';
-  if (r === '中') return 'relevance-mid';
-  return 'relevance-low';
-}
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function showAlert(msg, type) {
-  // 既存のアラートを削除
   document.querySelectorAll('.floating-alert').forEach(e => e.remove());
   const el = document.createElement('div');
-  el.className = 'toast floating-alert ' + (type === 'success' ? 'success' : type === 'error' ? 'error' : '');
+  el.className = 'toast floating-alert ' + (type==='success'?'success':type==='error'?'error':'');
   el.textContent = msg;
   document.body.appendChild(el);
   setTimeout(() => el.remove(), 3500);
 }
 
-// CSS追加
 const style = document.createElement('style');
-style.textContent = `
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .pipeline-step.error .step-icon { border-color: var(--accent-amber); color: var(--accent-amber); }
-`;
+style.textContent = `@keyframes spin { to { transform: rotate(360deg); } }`;
 document.head.appendChild(style);
