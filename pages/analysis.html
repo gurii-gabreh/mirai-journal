@@ -8,6 +8,31 @@
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" />
   <link rel="stylesheet" href="../css/style.css" />
+  <style>
+    .strength-ratio-bar { margin-bottom: 14px; }
+    .strength-ratio-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; }
+    .strength-ratio-name { font-size: 13px; font-weight: 500; color: var(--text-primary); display: flex; align-items: center; gap: 6px; }
+    .specialized-badge { font-size: 10px; padding: 1px 7px; border-radius: 20px; background: var(--accent-amber-light); color: var(--accent-amber); }
+    .strength-ratio-pct { font-size: 13px; font-weight: 700; }
+    .strength-ratio-track { height: 10px; background: var(--bg-base); border-radius: 5px; overflow: hidden; margin-bottom: 4px; }
+    .strength-ratio-fill { height: 100%; border-radius: 5px; transition: width 1s ease; }
+    .strength-example { font-size: 11px; color: var(--text-muted); line-height: 1.5; padding: 6px 8px; background: var(--bg-base); border-radius: 4px; margin-top: 4px; }
+
+    .weakness-card { padding: 12px; border-radius: var(--radius-sm); margin-bottom: 10px; }
+    .weakness-visible { border-left: 3px solid #e74c3c; background: #fff9f9; }
+    .weakness-potential { border-left: 3px solid #d97706; background: #fffbeb; }
+    .weakness-name { font-size: 13px; font-weight: 500; margin-bottom: 4px; }
+    .weakness-desc { font-size: 12px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 6px; }
+    .weakness-example { font-size: 11px; color: var(--text-muted); background: rgba(255,255,255,0.7); padding: 5px 8px; border-radius: 4px; margin-bottom: 6px; }
+    .weakness-follow { font-size: 12px; color: var(--accent-green); }
+
+    .specialization-box { background: linear-gradient(135deg, #1a1a2e, #16213e); color: white; border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1rem; }
+    .spec-label { font-size: 11px; opacity: 0.6; margin-bottom: 6px; }
+    .spec-text { font-size: 14px; line-height: 1.7; opacity: 0.9; }
+
+    .start-area { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 3rem; text-align: center; }
+    .start-area i { font-size: 48px; color: var(--text-muted); opacity: 0.3; margin-bottom: 1rem; }
+  </style>
 </head>
 <body>
   <div class="app-layout">
@@ -19,7 +44,7 @@
         </div>
       </div>
       <nav class="sidebar-nav">
-                <div class="nav-section-label">メイン</div>
+        <div class="nav-section-label">メイン</div>
         <a href="../index.html" class="nav-item"><i class="ti ti-layout-dashboard"></i><span>ダッシュボード</span></a>
         <a href="journal.html" class="nav-item"><i class="ti ti-pencil"></i><span>今日のジャーナル</span></a>
         <a href="goals.html" class="nav-item"><i class="ti ti-target"></i><span>目標一覧</span></a>
@@ -35,119 +60,221 @@
     <main class="main-content">
       <header class="top-header">
         <button class="menu-toggle" id="menuToggle"><i class="ti ti-menu-2"></i></button>
-        <div class="header-title"><h1>自己分析</h1><span class="header-date">蓄積データから自動生成</span></div>
+        <div class="header-title">
+          <h1>自己分析</h1>
+          <span class="header-date">過去のジャーナルから総合分析</span>
+        </div>
+        <button class="header-cta" id="analyzeBtn" onclick="runAnalysis()">
+          <i class="ti ti-sparkles"></i>自己分析を実行
+        </button>
       </header>
 
       <div class="content-body">
-        <div class="two-col" style="margin-bottom:1rem;">
-          <!-- 強みランキング -->
-          <div class="card">
-            <div class="card-header">
-              <h2><i class="ti ti-star"></i>あなたの強みランキング</h2>
-              <span style="font-size:11px;color:var(--text-muted);" id="strengthUpdateDate"></span>
-            </div>
-            <div id="fullStrengthList">
-              <div class="empty-state">
-                <i class="ti ti-chart-off"></i>
-                <p>ジャーナルを記録すると<br>強みが自動分析されます</p>
-                <a href="journal.html" class="btn-primary">ジャーナルを書く</a>
-              </div>
-            </div>
-          </div>
 
-          <!-- キャリア候補 -->
-          <div class="card">
-            <div class="card-header">
-              <h2><i class="ti ti-rocket"></i>キャリア候補ランキング</h2>
+        <!-- 初期状態 -->
+        <div class="card" id="initialState">
+          <div class="start-area">
+            <i class="ti ti-chart-radar"></i>
+            <div style="font-size:16px;font-weight:500;color:var(--text-primary);margin-bottom:8px;">自己分析を実行する</div>
+            <div style="font-size:13px;color:var(--text-muted);margin-bottom:1.5rem;line-height:1.6;">
+              過去のジャーナルをGeminiが総合分析し<br>強みの割合・弱みを具体例付きで表示します
             </div>
-            <div id="fullCareerList">
-              <div class="empty-state">
-                <i class="ti ti-rocket-off"></i>
-                <p>分析後に提案されます</p>
-              </div>
-            </div>
+            <button class="btn-primary" onclick="runAnalysis()" style="font-size:14px;padding:10px 24px;">
+              <i class="ti ti-sparkles"></i>自己分析を実行する
+            </button>
           </div>
         </div>
 
-        <!-- ジャーナル履歴 -->
-        <div class="card">
-          <div class="card-header">
-            <h2><i class="ti ti-history"></i>ジャーナル履歴</h2>
-            <span style="font-size:12px;color:var(--text-muted);" id="journalTotal"></span>
-          </div>
-          <div id="journalHistory">
-            <div class="empty-state">
-              <i class="ti ti-notes-off"></i>
-              <p>まだ記録がありません</p>
-            </div>
+        <!-- 処理中 -->
+        <div class="card" id="loadingState" style="display:none;">
+          <div class="start-area">
+            <div class="loading-dots"><span></span><span></span><span></span></div>
+            <div style="font-size:14px;color:var(--text-muted);margin-top:1rem;">Geminiが過去のジャーナルを分析中...</div>
           </div>
         </div>
+
+        <!-- 分析結果 -->
+        <div id="resultArea" style="display:none;">
+
+          <!-- 特化ポイント -->
+          <div class="specialization-box" id="specializationBox"></div>
+
+          <div class="two-col">
+            <!-- 強み（割合） -->
+            <div class="card">
+              <div class="card-header">
+                <h2><i class="ti ti-star"></i>強み分析（合計100%）</h2>
+                <span class="ai-badge badge-gemini">Gemini</span>
+              </div>
+              <div id="strengthRatioList"></div>
+            </div>
+
+            <!-- 弱み -->
+            <div class="card">
+              <div class="card-header">
+                <h2><i class="ti ti-alert-triangle"></i>弱み分析</h2>
+              </div>
+
+              <div style="font-size:12px;font-weight:500;color:#e74c3c;margin-bottom:8px;">
+                <i class="ti ti-eye"></i> 外観からの弱み
+              </div>
+              <div id="visibleWeaknesses" style="margin-bottom:1rem;"></div>
+
+              <div style="font-size:12px;font-weight:500;color:#d97706;margin-bottom:8px;">
+                <i class="ti ti-eye-off"></i> 潜在的な弱み
+              </div>
+              <div id="potentialWeaknesses"></div>
+            </div>
+          </div>
+
+          <!-- 総合コメント -->
+          <div class="card" style="margin-top:1rem;">
+            <div class="card-header">
+              <h2><i class="ti ti-message-circle"></i>総合コメント</h2>
+            </div>
+            <div id="overallComment" style="font-size:13px;line-height:1.8;color:var(--text-primary);"></div>
+          </div>
+
+          <!-- 再実行 -->
+          <div style="text-align:center;padding:1rem;">
+            <button class="btn-secondary" onclick="runAnalysis()">
+              <i class="ti ti-refresh"></i>再分析する
+            </button>
+          </div>
+        </div>
+
       </div>
     </main>
   </div>
 
   <script src="../js/storage.js"></script>
+  <script src="../js/gemini.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       const toggle = document.getElementById('menuToggle');
       const sidebar = document.getElementById('sidebar');
       if (toggle && sidebar) toggle.addEventListener('click', () => sidebar.classList.toggle('open'));
-
-      renderStrengths();
-      renderCareers();
-      renderHistory();
     });
 
-    function renderStrengths() {
-      const strengths = Storage.getStrengths();
-      const el = document.getElementById('fullStrengthList');
-      if (!el || !strengths.length) return;
-      const colors = ['#0f9e6e','#2563eb','#7c3aed','#d97706','#e74c3c','#888','#1a9ed4','#e67e22'];
-      el.innerHTML = strengths.map((s, i) => `
-        <div class="strength-item">
-          <div class="strength-header">
-            <span class="strength-name">${i+1}. ${esc(s.name)}</span>
-            <span class="strength-pct">${s.score}%</span>
-          </div>
-          <div class="bar-bg">
-            <div class="bar-fill" style="width:${s.score}%;background:${colors[i%colors.length]};"></div>
-          </div>
-        </div>
-      `).join('');
-    }
+    async function runAnalysis() {
+      const settings = Storage.getSettings();
+      if (!settings.geminiApiKey) {
+        showToast('Gemini APIキーを設定してください', 'error');
+        setTimeout(() => { window.location.href = 'settings.html'; }, 2000);
+        return;
+      }
 
-    function renderCareers() {
-      const careers = Storage.getCareers();
-      const el = document.getElementById('fullCareerList');
-      if (!el || !careers.length) return;
-      el.innerHTML = careers.map((c, i) => `
-        <div class="career-item">
-          <span class="career-rank">${i+1}</span>
-          <div style="flex:1;">
-            <div class="career-name">${esc(c.name)}</div>
-            <div style="font-size:11px;color:var(--text-muted);">${esc(c.reason || '')}</div>
-          </div>
-          <span class="career-score-badge">適合${c.score}%</span>
-        </div>
-      `).join('');
-    }
-
-    function renderHistory() {
       const journals = Storage.getJournals();
-      const totalEl = document.getElementById('journalTotal');
-      if (totalEl) totalEl.textContent = `計${journals.length}件`;
-      const el = document.getElementById('journalHistory');
-      if (!el || !journals.length) return;
-      el.innerHTML = journals.map(j => `
-        <div class="journal-item">
-          <div class="journal-item-date">${new Date(j.date).toLocaleString('ja-JP')}</div>
-          <div class="journal-item-text">${esc(j.text)}</div>
-          <div class="journal-item-tags">${(j.tags||[]).map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</div>
+      if (journals.length < 1) {
+        showToast('ジャーナルを記録してから実行してください', 'error');
+        return;
+      }
+
+      document.getElementById('initialState').style.display = 'none';
+      document.getElementById('resultArea').style.display = 'none';
+      document.getElementById('loadingState').style.display = 'block';
+
+      const btn = document.getElementById('analyzeBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite;"></i>分析中...';
+
+      try {
+        const result = await GeminiAPI.analyzeSelf(journals, settings.geminiApiKey);
+        renderResult(result);
+        document.getElementById('loadingState').style.display = 'none';
+        document.getElementById('resultArea').style.display = 'block';
+        showToast('自己分析が完了しました！', 'success');
+      } catch(e) {
+        console.error(e);
+        document.getElementById('loadingState').style.display = 'none';
+        document.getElementById('initialState').style.display = 'block';
+        showToast('エラー: ' + e.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="ti ti-sparkles"></i>自己分析を実行';
+      }
+    }
+
+    function renderResult(r) {
+      // 特化ポイント
+      const specBox = document.getElementById('specializationBox');
+      specBox.innerHTML = `
+        <div style="font-size:11px;opacity:0.6;margin-bottom:6px;">🌟 最も特化している点</div>
+        <div style="font-size:14px;line-height:1.7;opacity:0.9;">${esc(r.specialization || '')}</div>
+      `;
+
+      // 強み（割合・A案）
+      const strengthList = document.getElementById('strengthRatioList');
+      const strengths = r.strengths || [];
+      const colors = ['#0f9e6e','#2563eb','#7c3aed','#d97706','#e74c3c','#0891b2','#059669','#9333ea'];
+
+      // 合計を100に正規化
+      const total = strengths.reduce((a, b) => a + (b.ratio || 0), 0);
+      strengthList.innerHTML = strengths.map((s, i) => {
+        const ratio = total > 0 ? Math.round((s.ratio / total) * 100) : 0;
+        const color = colors[i % colors.length];
+        return `
+          <div class="strength-ratio-bar">
+            <div class="strength-ratio-header">
+              <div class="strength-ratio-name">
+                ${esc(s.name)}
+                ${s.isSpecialized ? '<span class="specialized-badge">特化</span>' : ''}
+              </div>
+              <div class="strength-ratio-pct" style="color:${color};">${ratio}%</div>
+            </div>
+            <div class="strength-ratio-track">
+              <div class="strength-ratio-fill" style="width:${ratio}%;background:${color};"></div>
+            </div>
+            <div class="strength-example">
+              📌 ${esc(s.specificExample || s.description || '')}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // 外観からの弱み
+      const visibleEl = document.getElementById('visibleWeaknesses');
+      const visible = r.weaknesses?.visible || [];
+      visibleEl.innerHTML = visible.length ? visible.map(w => `
+        <div class="weakness-card weakness-visible">
+          <div class="weakness-name" style="color:#c0392b;">⚠ ${esc(w.name)}</div>
+          <div class="weakness-desc">${esc(w.description)}</div>
+          <div class="weakness-example">📋 具体例：${esc(w.specificExample)}</div>
+          <div class="weakness-follow">→ ${esc(w.follow)}</div>
         </div>
-      `).join('');
+      `).join('') : '<div style="font-size:12px;color:var(--text-muted);padding:8px;">該当なし</div>';
+
+      // 潜在的な弱み
+      const potentialEl = document.getElementById('potentialWeaknesses');
+      const potential = r.weaknesses?.potential || [];
+      potentialEl.innerHTML = potential.length ? potential.map(w => `
+        <div class="weakness-card weakness-potential">
+          <div class="weakness-name" style="color:#d97706;">💡 ${esc(w.name)}</div>
+          <div class="weakness-desc">${esc(w.description)}</div>
+          <div class="weakness-example">📋 根拠：${esc(w.specificExample)}</div>
+          <div class="weakness-follow">→ ${esc(w.follow)}</div>
+        </div>
+      `).join('') : '<div style="font-size:12px;color:var(--text-muted);padding:8px;">該当なし</div>';
+
+      // 総合コメント
+      document.getElementById('overallComment').innerHTML =
+        esc(r.overallComment || '').replace(/\n/g, '<br>');
+    }
+
+    function showToast(msg, type) {
+      document.querySelectorAll('.toast').forEach(e => e.remove());
+      const t = document.createElement('div');
+      t.className = 'toast ' + (type==='success'?'success':type==='error'?'error':'');
+      t.textContent = msg;
+      document.body.appendChild(t);
+      setTimeout(() => t.remove(), 3500);
     }
 
     function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    const style = document.createElement('style');
+    style.textContent = `@keyframes spin { to { transform: rotate(360deg); } }`;
+    document.head.appendChild(style);
   </script>
 </body>
 </html>
