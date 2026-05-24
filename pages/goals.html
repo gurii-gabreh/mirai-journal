@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>目標一覧 — Mirai Journal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" />
+  <link rel="stylesheet" href="../css/style.css" />
+  <style>
+    .goal-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 12px; cursor: pointer; transition: box-shadow var(--transition); }
+    .goal-card:hover { box-shadow: var(--shadow-md); }
+    .goal-header { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 10px; }
+    .goal-title { font-size: 15px; font-weight: 500; color: var(--text-primary); flex: 1; }
+    .goal-deadline { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+    .goal-progress-row { display: flex; align-items: center; gap: 10px; }
+    .goal-progress-bar { flex: 1; height: 6px; background: var(--bg-base); border-radius: 3px; overflow: hidden; }
+    .goal-progress-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, #0f9e6e, #2563eb); transition: width 0.8s ease; }
+    .goal-progress-pct { font-size: 13px; font-weight: 500; color: var(--text-primary); width: 36px; text-align: right; }
+    .goal-meta { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+    .goal-tag { font-size: 10px; padding: 2px 8px; border-radius: 20px; background: var(--bg-base); color: var(--text-muted); border: 1px solid var(--border); }
+    .goal-actions { display: flex; gap: 6px; margin-left: auto; }
+    .icon-btn { background: none; border: none; padding: 4px 6px; border-radius: 6px; color: var(--text-muted); cursor: pointer; font-size: 16px; transition: all var(--transition); }
+    .icon-btn:hover { background: var(--bg-base); color: var(--text-primary); }
+    .icon-btn.danger:hover { background: #fff1f0; color: #c0392b; }
+
+    /* モーダル */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 200; align-items: center; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: var(--bg-surface); border-radius: var(--radius); padding: 1.5rem; width: 90%; max-width: 480px; box-shadow: var(--shadow-md); }
+    .modal-title { font-size: 16px; font-weight: 500; margin-bottom: 1.25rem; }
+    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 1.25rem; }
+
+    /* 進捗カラー */
+    .pct-high { color: var(--accent-green); }
+    .pct-mid { color: var(--accent-amber); }
+    .pct-low { color: #c0392b; }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <span class="logo-icon"><i class="ti ti-compass"></i></span>
+          <span class="logo-text">Mirai<br><em>Journal</em></span>
+        </div>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">メイン</div>
+        <a href="../index.html" class="nav-item"><i class="ti ti-layout-dashboard"></i><span>ダッシュボード</span></a>
+        <a href="journal.html" class="nav-item"><i class="ti ti-pencil"></i><span>今日のジャーナル</span></a>
+        <a href="goals.html" class="nav-item active"><i class="ti ti-target"></i><span>目標一覧</span></a>
+        <a href="analysis.html" class="nav-item"><i class="ti ti-chart-radar"></i><span>自己分析</span></a>
+        <a href="trends.html" class="nav-item"><i class="ti ti-world-search"></i><span>トレンド記録</span></a>
+        <a href="career.html" class="nav-item"><i class="ti ti-rocket"></i><span>キャリア候補</span></a>
+        <a href="weekly.html" class="nav-item"><i class="ti ti-calendar-stats"></i><span>週次レポート</span></a>
+        <div class="nav-section-label">設定</div>
+        <a href="settings.html" class="nav-item"><i class="ti ti-settings"></i><span>API設定</span></a>
+      </nav>
+    </aside>
+
+    <main class="main-content">
+      <header class="top-header">
+        <button class="menu-toggle" id="menuToggle"><i class="ti ti-menu-2"></i></button>
+        <div class="header-title"><h1>目標一覧</h1><span class="header-date">大目標を管理・進捗確認</span></div>
+        <button class="header-cta" onclick="openAddModal()">
+          <i class="ti ti-plus"></i>目標を追加
+        </button>
+      </header>
+
+      <div class="content-body">
+        <!-- サマリー -->
+        <div class="metrics-grid" style="margin-bottom:1rem;">
+          <div class="metric-card accent-green">
+            <div class="metric-icon"><i class="ti ti-target"></i></div>
+            <div class="metric-info"><div class="metric-value" id="totalGoals">0</div><div class="metric-label">総目標数</div></div>
+          </div>
+          <div class="metric-card accent-blue">
+            <div class="metric-icon"><i class="ti ti-chart-line"></i></div>
+            <div class="metric-info"><div class="metric-value" id="avgProgress">0%</div><div class="metric-label">平均進捗率</div></div>
+          </div>
+          <div class="metric-card accent-amber">
+            <div class="metric-icon"><i class="ti ti-clock"></i></div>
+            <div class="metric-info"><div class="metric-value" id="nearDeadline">0</div><div class="metric-label">期限が近い目標</div></div>
+          </div>
+          <div class="metric-card accent-purple">
+            <div class="metric-icon"><i class="ti ti-trophy"></i></div>
+            <div class="metric-info"><div class="metric-value" id="achievedGoals">0</div><div class="metric-label">達成済み</div></div>
+          </div>
+        </div>
+
+        <!-- 目標リスト -->
+        <div class="card">
+          <div class="card-header">
+            <h2><i class="ti ti-target"></i>目標リスト</h2>
+            <div style="display:flex;gap:8px;">
+              <button class="chip" onclick="filterGoals('all',this)" style="border:1px solid var(--border-strong);">すべて</button>
+              <button class="chip" onclick="filterGoals('active',this)">進行中</button>
+              <button class="chip" onclick="filterGoals('achieved',this)">達成済み</button>
+            </div>
+          </div>
+          <div id="goalList">
+            <div class="empty-state">
+              <i class="ti ti-target-off"></i>
+              <p>目標がまだありません<br>「目標を追加」から登録してください</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- 目標追加/編集モーダル -->
+  <div class="modal-overlay" id="goalModal">
+    <div class="modal">
+      <div class="modal-title" id="modalTitle">目標を追加</div>
+      <input type="hidden" id="editGoalId" />
+      <div class="form-group">
+        <label class="form-label">目標タイトル <span style="color:#e74c3c;">*</span></label>
+        <input type="text" class="form-input" id="goalTitle" placeholder="例：AIコンサルタントとして独立する" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">詳細・背景</label>
+        <textarea class="journal-textarea" id="goalDesc" rows="3" placeholder="この目標を達成したい理由や背景を書いてください"></textarea>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="form-group">
+          <label class="form-label">期限</label>
+          <input type="date" class="form-input" id="goalDeadline" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">カテゴリ</label>
+          <select class="form-input" id="goalCategory">
+            <option value="キャリア">キャリア</option>
+            <option value="スキル">スキル</option>
+            <option value="収入">収入</option>
+            <option value="ライフスタイル">ライフスタイル</option>
+            <option value="その他">その他</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="closeModal()">キャンセル</button>
+        <button class="btn-primary" onclick="saveGoal()"><i class="ti ti-device-floppy"></i>保存</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/storage.js"></script>
+  <script>
+    let allGoals = [];
+    let currentFilter = 'all';
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const toggle = document.getElementById('menuToggle');
+      const sidebar = document.getElementById('sidebar');
+      if (toggle && sidebar) toggle.addEventListener('click', () => sidebar.classList.toggle('open'));
+      loadGoals();
+    });
+
+    function loadGoals() {
+      allGoals = Storage.getGoals();
+      updateSummary();
+      renderGoals(allGoals);
+    }
+
+    function updateSummary() {
+      const total = allGoals.length;
+      const achieved = allGoals.filter(g => g.achieved).length;
+      const avg = total ? Math.round(allGoals.reduce((a,b) => a + (b.progress||0), 0) / total) : 0;
+      const now = Date.now();
+      const near = allGoals.filter(g => {
+        if (!g.deadline || g.achieved) return false;
+        const diff = new Date(g.deadline) - now;
+        return diff > 0 && diff < 30 * 86400000; // 30日以内
+      }).length;
+
+      document.getElementById('totalGoals').textContent = total + '件';
+      document.getElementById('avgProgress').textContent = avg + '%';
+      document.getElementById('nearDeadline').textContent = near + '件';
+      document.getElementById('achievedGoals').textContent = achieved + '件';
+    }
+
+    function filterGoals(type, btn) {
+      document.querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
+      btn.classList.add('selected');
+      currentFilter = type;
+      const filtered = type === 'achieved' ? allGoals.filter(g => g.achieved)
+        : type === 'active' ? allGoals.filter(g => !g.achieved)
+        : allGoals;
+      renderGoals(filtered);
+    }
+
+    function renderGoals(goals) {
+      const el = document.getElementById('goalList');
+      if (!goals.length) {
+        el.innerHTML = '<div class="empty-state"><i class="ti ti-target-off"></i><p>該当する目標がありません</p></div>';
+        return;
+      }
+      el.innerHTML = goals.map(g => {
+        const pct = g.progress || 0;
+        const pctClass = pct >= 70 ? 'pct-high' : pct >= 40 ? 'pct-mid' : 'pct-low';
+        const deadlineStr = g.deadline ? `期限: ${new Date(g.deadline).toLocaleDateString('ja-JP')}` : '期限未設定';
+        const historyCount = (g.history || []).length;
+        return `
+          <div class="goal-card" onclick="openDetail('${g.id}')">
+            <div class="goal-header">
+              <div style="flex:1;">
+                <div class="goal-title">${esc(g.title)}${g.achieved ? ' <span style="font-size:11px;padding:2px 8px;border-radius:20px;background:var(--accent-green-light);color:var(--accent-green);">達成済み</span>' : ''}</div>
+                <div class="goal-deadline">${deadlineStr} · ${esc(g.category||'')} · 記録${historyCount}件</div>
+              </div>
+              <div class="goal-actions" onclick="event.stopPropagation()">
+                <button class="icon-btn" onclick="openEditModal('${g.id}')" title="編集"><i class="ti ti-edit"></i></button>
+                <button class="icon-btn" onclick="toggleAchieved('${g.id}')" title="${g.achieved?'未達成に戻す':'達成にする'}">
+                  <i class="ti ti-${g.achieved ? 'x' : 'check'}"></i>
+                </button>
+                <button class="icon-btn danger" onclick="deleteGoal('${g.id}')" title="削除"><i class="ti ti-trash"></i></button>
+              </div>
+            </div>
+            ${g.description ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">${esc(g.description.slice(0,80))}${g.description.length>80?'...':''}</div>` : ''}
+            <div class="goal-progress-row">
+              <div class="goal-progress-bar">
+                <div class="goal-progress-fill" style="width:${pct}%;"></div>
+              </div>
+              <div class="goal-progress-pct ${pctClass}">${pct}%</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function openDetail(goalId) {
+      window.location.href = `goal-detail.html?id=${goalId}`;
+    }
+
+    function openAddModal() {
+      document.getElementById('modalTitle').textContent = '目標を追加';
+      document.getElementById('editGoalId').value = '';
+      document.getElementById('goalTitle').value = '';
+      document.getElementById('goalDesc').value = '';
+      document.getElementById('goalDeadline').value = '';
+      document.getElementById('goalCategory').value = 'キャリア';
+      document.getElementById('goalModal').classList.add('open');
+    }
+
+    function openEditModal(goalId) {
+      const goal = allGoals.find(g => g.id === goalId);
+      if (!goal) return;
+      document.getElementById('modalTitle').textContent = '目標を編集';
+      document.getElementById('editGoalId').value = goalId;
+      document.getElementById('goalTitle').value = goal.title || '';
+      document.getElementById('goalDesc').value = goal.description || '';
+      document.getElementById('goalDeadline').value = goal.deadline || '';
+      document.getElementById('goalCategory').value = goal.category || 'キャリア';
+      document.getElementById('goalModal').classList.add('open');
+    }
+
+    function closeModal() {
+      document.getElementById('goalModal').classList.remove('open');
+    }
+
+    function saveGoal() {
+      const title = document.getElementById('goalTitle').value.trim();
+      if (!title) { alert('目標タイトルを入力してください'); return; }
+      const editId = document.getElementById('editGoalId').value;
+      const goal = {
+        id: editId || null,
+        title,
+        description: document.getElementById('goalDesc').value.trim(),
+        deadline: document.getElementById('goalDeadline').value,
+        category: document.getElementById('goalCategory').value,
+        achieved: editId ? (allGoals.find(g=>g.id===editId)?.achieved || false) : false,
+      };
+      Storage.saveGoal(goal);
+      closeModal();
+      loadGoals();
+      showToast('目標を保存しました', 'success');
+    }
+
+    function toggleAchieved(goalId) {
+      const goals = Storage.getGoals();
+      const idx = goals.findIndex(g => g.id === goalId);
+      if (idx < 0) return;
+      goals[idx].achieved = !goals[idx].achieved;
+      if (goals[idx].achieved) goals[idx].progress = 100;
+      Storage.set(Storage.KEYS.GOALS, goals);
+      loadGoals();
+      showToast(goals[idx].achieved ? '達成済みにしました！🎉' : '未達成に戻しました', 'success');
+    }
+
+    function deleteGoal(goalId) {
+      if (!confirm('この目標を削除しますか？\n紐づくトレンドデータも削除されます。')) return;
+      Storage.deleteGoal(goalId);
+      loadGoals();
+      showToast('目標を削除しました', '');
+    }
+
+    function showToast(msg, type) {
+      document.querySelectorAll('.toast').forEach(e => e.remove());
+      const t = document.createElement('div');
+      t.className = 'toast ' + (type === 'success' ? 'success' : type === 'error' ? 'error' : '');
+      t.textContent = msg;
+      document.body.appendChild(t);
+      setTimeout(() => t.remove(), 3000);
+    }
+
+    function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    // モーダル外クリックで閉じる
+    document.getElementById('goalModal').addEventListener('click', function(e) {
+      if (e.target === this) closeModal();
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>目標詳細 — Mirai Journal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css" />
+  <link rel="stylesheet" href="../css/style.css" />
+  <style>
+    .progress-circle { position: relative; width: 120px; height: 120px; flex-shrink: 0; }
+    .progress-circle svg { transform: rotate(-90deg); }
+    .progress-circle .pct-text { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 700; color: var(--text-primary); }
+    .history-item { padding: 1rem; border-bottom: 1px solid var(--border); }
+    .history-item:last-child { border-bottom: none; }
+    .history-date { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between; }
+    .history-score { font-size: 12px; font-weight: 500; padding: 2px 8px; border-radius: 20px; }
+    .score-high { background: var(--accent-green-light); color: var(--accent-green); }
+    .score-mid { background: var(--accent-amber-light); color: var(--accent-amber); }
+    .score-low { background: #fff1f0; color: #c0392b; }
+    .point-row { display: flex; gap: 8px; margin-bottom: 6px; align-items: flex-start; }
+    .point-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+    .point-text { font-size: 13px; color: var(--text-primary); line-height: 1.5; }
+    .follow-text { font-size: 12px; color: var(--accent-green); margin-top: 3px; }
+    .delete-journal-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 2px 4px; font-size: 13px; }
+    .delete-journal-btn:hover { color: #c0392b; }
+  </style>
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <span class="logo-icon"><i class="ti ti-compass"></i></span>
+          <span class="logo-text">Mirai<br><em>Journal</em></span>
+        </div>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-section-label">メイン</div>
+        <a href="../index.html" class="nav-item"><i class="ti ti-layout-dashboard"></i><span>ダッシュボード</span></a>
+        <a href="journal.html" class="nav-item"><i class="ti ti-pencil"></i><span>今日のジャーナル</span></a>
+        <a href="goals.html" class="nav-item active"><i class="ti ti-target"></i><span>目標一覧</span></a>
+        <a href="analysis.html" class="nav-item"><i class="ti ti-chart-radar"></i><span>自己分析</span></a>
+        <a href="trends.html" class="nav-item"><i class="ti ti-world-search"></i><span>トレンド記録</span></a>
+        <a href="career.html" class="nav-item"><i class="ti ti-rocket"></i><span>キャリア候補</span></a>
+        <a href="weekly.html" class="nav-item"><i class="ti ti-calendar-stats"></i><span>週次レポート</span></a>
+        <div class="nav-section-label">設定</div>
+        <a href="settings.html" class="nav-item"><i class="ti ti-settings"></i><span>API設定</span></a>
+      </nav>
+    </aside>
+
+    <main class="main-content">
+      <header class="top-header">
+        <button class="menu-toggle" id="menuToggle"><i class="ti ti-menu-2"></i></button>
+        <div class="header-title">
+          <h1 id="pageTitle">目標詳細</h1>
+          <span class="header-date" id="pageSubtitle"></span>
+        </div>
+        <a href="goals.html" class="btn-secondary" style="font-size:13px;">
+          <i class="ti ti-arrow-left"></i>一覧に戻る
+        </a>
+      </header>
+
+      <div class="content-body">
+        <div id="mainContent">
+          <div class="empty-state"><i class="ti ti-loader-2"></i><p>読み込み中...</p></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="../js/storage.js"></script>
+  <script>
+    let goal = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const toggle = document.getElementById('menuToggle');
+      const sidebar = document.getElementById('sidebar');
+      if (toggle && sidebar) toggle.addEventListener('click', () => sidebar.classList.toggle('open'));
+
+      const params = new URLSearchParams(location.search);
+      const goalId = params.get('id');
+      if (!goalId) { location.href = 'goals.html'; return; }
+
+      goal = Storage.getGoals().find(g => g.id === goalId);
+      if (!goal) { location.href = 'goals.html'; return; }
+
+      render();
+    });
+
+    function render() {
+      document.getElementById('pageTitle').textContent = goal.title;
+      document.getElementById('pageSubtitle').textContent =
+        (goal.deadline ? `期限: ${new Date(goal.deadline).toLocaleDateString('ja-JP')}` : '期限未設定') +
+        ' · ' + (goal.category || '') +
+        (goal.achieved ? ' · ✅達成済み' : '');
+
+      const pct = goal.progress || 0;
+      const history = goal.history || [];
+
+      // 進捗サマリー
+      const goodAll = history.flatMap(h => h.goodPoints || []);
+      const probAll = history.flatMap(h => h.problems || []);
+
+      document.getElementById('mainContent').innerHTML = `
+        <!-- 進捗カード -->
+        <div class="card" style="margin-bottom:1rem;">
+          <div class="card-header"><h2><i class="ti ti-chart-line"></i>進捗状況</h2></div>
+          <div style="display:flex;align-items:center;gap:2rem;flex-wrap:wrap;">
+            <div class="progress-circle">
+              <svg width="120" height="120" viewBox="0 0 120 120">
+                <circle cx="60" cy="60" r="50" fill="none" stroke="var(--bg-base)" stroke-width="10"/>
+                <circle cx="60" cy="60" r="50" fill="none"
+                  stroke="${pct >= 70 ? '#0f9e6e' : pct >= 40 ? '#d97706' : '#e74c3c'}"
+                  stroke-width="10"
+                  stroke-dasharray="${2*Math.PI*50}"
+                  stroke-dashoffset="${2*Math.PI*50*(1-pct/100)}"
+                  stroke-linecap="round"/>
+              </svg>
+              <div class="pct-text">${pct}%</div>
+            </div>
+            <div style="flex:1;">
+              <div style="font-size:13px;color:var(--text-muted);margin-bottom:4px;">目標：${esc(goal.title)}</div>
+              ${goal.description ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">${esc(goal.description)}</div>` : ''}
+              <div style="display:flex;gap:16px;flex-wrap:wrap;">
+                <div><div style="font-size:20px;font-weight:700;">${history.length}回</div><div style="font-size:11px;color:var(--text-muted);">記録回数</div></div>
+                <div><div style="font-size:20px;font-weight:700;">${goodAll.length}件</div><div style="font-size:11px;color:var(--text-muted);">良かった点</div></div>
+                <div><div style="font-size:20px;font-weight:700;">${probAll.length}件</div><div style="font-size:11px;color:var(--text-muted);">改善点</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2カラム：良かった点・問題点まとめ -->
+        <div class="two-col" style="margin-bottom:1rem;">
+          <div class="card">
+            <div class="card-header"><h2><i class="ti ti-thumb-up"></i>良かった点まとめ</h2></div>
+            ${goodAll.length ? goodAll.slice(0,5).map(p => `
+              <div class="point-row">
+                <span class="point-icon" style="color:var(--accent-green);">✓</span>
+                <div class="point-text">${esc(p)}</div>
+              </div>
+            `).join('') : '<div class="empty-state" style="padding:1rem;"><p>まだ記録がありません</p></div>'}
+          </div>
+          <div class="card">
+            <div class="card-header"><h2><i class="ti ti-alert-triangle"></i>改善点まとめ</h2></div>
+            ${probAll.length ? probAll.slice(0,5).map(p => `
+              <div class="point-row">
+                <span class="point-icon" style="color:#e74c3c;">!</span>
+                <div class="point-text">${esc(typeof p === 'object' ? p.point : p)}</div>
+                ${typeof p === 'object' && p.follow ? `<div class="follow-text">→ ${esc(p.follow)}</div>` : ''}
+              </div>
+            `).join('') : '<div class="empty-state" style="padding:1rem;"><p>まだ記録がありません</p></div>'}
+          </div>
+        </div>
+
+        <!-- 履歴一覧 -->
+        <div class="card">
+          <div class="card-header">
+            <h2><i class="ti ti-history"></i>ジャーナル履歴</h2>
+            <span style="font-size:12px;color:var(--text-muted);">計${history.length}件</span>
+          </div>
+          ${history.length ? history.map(h => {
+            const sc = h.achievementScore || 0;
+            const scClass = sc >= 70 ? 'score-high' : sc >= 40 ? 'score-mid' : 'score-low';
+            return `
+            <div class="history-item">
+              <div class="history-date">
+                <span>${new Date(h.date).toLocaleString('ja-JP')}</span>
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <span class="history-score ${scClass}">達成度 ${sc}%</span>
+                  <button class="delete-journal-btn" onclick="deleteJournal('${h.journalId}')" title="このジャーナルを削除">
+                    <i class="ti ti-trash"></i>
+                  </button>
+                </div>
+              </div>
+              <div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px;">${esc((h.journalText||'').slice(0,120))}${(h.journalText||'').length>120?'...':''}</div>
+              ${h.assessment ? `<div style="font-size:12px;color:var(--text-muted);padding:8px;background:var(--bg-base);border-radius:6px;">${esc(h.assessment)}</div>` : ''}
+              ${h.approach ? `<div style="font-size:12px;color:var(--accent-blue);margin-top:4px;">→ ${esc(h.approach)}</div>` : ''}
+            </div>`;
+          }).join('') : '<div class="empty-state"><i class="ti ti-notes-off"></i><p>まだジャーナルが記録されていません</p></div>'}
+        </div>
+      `;
+    }
+
+    function deleteJournal(journalId) {
+      if (!journalId) return;
+      if (!confirm('このジャーナルを削除しますか？\n紐づくトレンド・進捗データも削除されます。')) return;
+      Storage.deleteJournal(journalId);
+      // 目標を再取得して再描画
+      goal = Storage.getGoals().find(g => g.id === goal.id);
+      if (goal) render();
+      showToast('削除しました', 'success');
+    }
+
+    function showToast(msg, type) {
+      document.querySelectorAll('.toast').forEach(e => e.remove());
+      const t = document.createElement('div');
+      t.className = 'toast ' + (type === 'success' ? 'success' : '');
+      t.textContent = msg;
+      document.body.appendChild(t);
+      setTimeout(() => t.remove(), 3000);
+    }
+
+    function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  </script>
+</body>
+</html>
