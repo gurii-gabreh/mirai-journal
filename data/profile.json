@@ -1,0 +1,23 @@
+{
+  "schema": "mirai-journal profile v1",
+  "description": "目標・強み・キャリア候補・トレンド・週次レポート・自己分析などの集計データ。journals.jsonより低頻度で、分析のたびにまとめて更新される(2026-10-04新設)。書き込みは常にClaude Code側が行い、mirai-journalのサイト自体はこのファイルを読むだけのビューアー(原則: progress-tracker-dashboardのdata/ai-config.json management.jsonSplittingPrinciple、claude-core-rules.mdルール29参照)。目標の新規追加・編集・削除も、ユーザーがClaude Codeへ依頼する形で行う(サイト上の編集UIは撤去済み)。",
+  "goalSchema": {
+    "id": "一意のID(例: g_<unixtime>)",
+    "title": "目標タイトル",
+    "description": "詳細・背景",
+    "deadline": "YYYY-MM-DD形式の期限(未設定ならnull)",
+    "category": "キャリア|スキル|収入|ライフスタイル|その他",
+    "achieved": "達成済みかどうか(bool)",
+    "progress": "進捗率0-100(history内achievementScoreの直近10件平均から算出)",
+    "history": [{"journalId": "対応するjournals.jsonのentry id", "date": "ISO8601", "achievementScore": 0, "assessment": "評価", "approach": "アプローチ", "goodPoints": ["良かった点"], "problems": ["問題点"]}],
+    "createdAt": "ISO8601",
+    "updatedAt": "ISO8601"
+  },
+  "updatedAt": null,
+  "goals": [],
+  "strengths": [],
+  "careers": [],
+  "trends": [],
+  "weeklyReport": null,
+  "selfAnalysis": null
+}

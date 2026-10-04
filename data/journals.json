@@ -1,0 +1,27 @@
+{
+  "schema": "mirai-journal journals v1",
+  "description": "日々のジャーナル(本文+AI分析結果)。高頻度で追記される、このアプリの正本データ(2026-10-04新設)。記録手順: ① Gemini Liveで面談 → ② claude-voice-bridgeの「ジャーナル面談」タブへ貼り付け・保存(生トランスクリプトはclaude-voice-bridge/data/journal.jsonへ) → ③ その内容をClaude Codeセッションへ貼り付けて分析を依頼 → ④ Claudeがcodex execで分析を委任・結果をレビュー → ⑤ Claudeがこのファイルへ直接commitする。書き込みは常にClaude Code側が行い、mirai-journalのサイト自体はこのファイルを読むだけのビューアー(原則: progress-tracker-dashboardのdata/ai-config.json management.jsonSplittingPrinciple、claude-core-rules.mdルール29参照)。",
+  "entrySchema": {
+    "id": "一意のID(例: j_<unixtime>)",
+    "date": "ISO8601の日時(面談を行った日時)",
+    "rawTranscript": "Gemini Live面談の生トランスクリプト(claude-voice-bridgeのjournal.jsonから取り込んだもの、要約・改変しない)",
+    "sourceJournalId": "claude-voice-bridge側data/journal.jsonのエントリid(取り込み元の参照用、無ければnull)",
+    "goalIds": "紐づけた目標のid配列(data/profile.jsonのgoals参照、無ければ空配列)",
+    "analysis": {
+      "summary": "今日の要約(2文程度)",
+      "goodPoints": [{"point": "良かった点", "reason": "理由・目標への貢献"}],
+      "problems": [{"point": "問題点(辛口)", "follow": "改善策・フォロー"}],
+      "goalProgress": [{"goalId": "対応する目標id", "goalTitle": "目標タイトル", "achievementScore": 0, "assessment": "評価", "approach": "アプローチ"}],
+      "coaching": "コーチングメッセージ",
+      "tags": ["タグ"],
+      "trends": [{"title": "トレンド", "relevance": "高|中|低", "insight": "目標との関連性", "goalId": "紐づく目標idまたはnull"}],
+      "strengths": [{"name": "強み", "score": 0, "reason": "根拠"}],
+      "careers": [{"name": "キャリア候補", "score": 0, "reason": "根拠"}],
+      "deepAnalysis": "深堀り分析(自由記述テキスト)",
+      "analyzedAt": "分析結果をこのファイルへ記録した日時(ISO8601)",
+      "analyzedVia": "分析に使ったツール(例: codex-exec)"
+    }
+  },
+  "updatedAt": null,
+  "entries": []
+}

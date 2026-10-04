@@ -46,14 +46,14 @@
       <nav class="sidebar-nav">
         <div class="nav-section-label">メイン</div>
         <a href="../index.html" class="nav-item"><i class="ti ti-layout-dashboard"></i><span>ダッシュボード</span></a>
-        <a href="journal.html" class="nav-item"><i class="ti ti-pencil"></i><span>今日のジャーナル</span></a>
+        <a href="journal.html" class="nav-item"><i class="ti ti-pencil"></i><span>ジャーナル履歴</span></a>
         <a href="goals.html" class="nav-item"><i class="ti ti-target"></i><span>目標一覧</span></a>
         <a href="analysis.html" class="nav-item active"><i class="ti ti-chart-radar"></i><span>自己分析</span></a>
         <a href="trends.html" class="nav-item"><i class="ti ti-world-search"></i><span>トレンド記録</span></a>
         <a href="career.html" class="nav-item"><i class="ti ti-rocket"></i><span>キャリア候補</span></a>
         <a href="weekly.html" class="nav-item"><i class="ti ti-calendar-stats"></i><span>週次レポート</span></a>
-        <div class="nav-section-label">設定</div>
-        <a href="settings.html" class="nav-item"><i class="ti ti-settings"></i><span>API設定</span></a>
+        <div class="nav-section-label">このアプリ</div>
+        <a href="settings.html" class="nav-item"><i class="ti ti-info-circle"></i><span>このアプリについて</span></a>
       </nav>
     </aside>
 
@@ -64,52 +64,34 @@
           <h1>自己分析</h1>
           <span class="header-date">過去のジャーナルから総合分析</span>
         </div>
-        <button class="header-cta" id="analyzeBtn" onclick="runAnalysis()">
-          <i class="ti ti-sparkles"></i>自己分析を実行
-        </button>
       </header>
 
       <div class="content-body">
 
-        <!-- 初期状態 -->
+        <!-- 未生成状態 -->
         <div class="card" id="initialState">
           <div class="start-area">
             <i class="ti ti-chart-radar"></i>
-            <div style="font-size:16px;font-weight:500;color:var(--text-primary);margin-bottom:8px;">自己分析を実行する</div>
-            <div style="font-size:13px;color:var(--text-muted);margin-bottom:1.5rem;line-height:1.6;">
-              過去のジャーナルをGeminiが総合分析し<br>強みの割合・弱みを具体例付きで表示します
+            <div style="font-size:16px;font-weight:500;color:var(--text-primary);margin-bottom:8px;">まだ自己分析がありません</div>
+            <div style="font-size:13px;color:var(--text-muted);line-height:1.6;">
+              Claude Codeへ「自己分析して」と依頼すると、過去のジャーナルを総合分析し<br>強みの割合・弱みを具体例付きでここに表示します
             </div>
-            <button class="btn-primary" onclick="runAnalysis()" style="font-size:14px;padding:10px 24px;">
-              <i class="ti ti-sparkles"></i>自己分析を実行する
-            </button>
-          </div>
-        </div>
-
-        <!-- 処理中 -->
-        <div class="card" id="loadingState" style="display:none;">
-          <div class="start-area">
-            <div class="loading-dots"><span></span><span></span><span></span></div>
-            <div style="font-size:14px;color:var(--text-muted);margin-top:1rem;">Geminiが過去のジャーナルを分析中...</div>
           </div>
         </div>
 
         <!-- 分析結果 -->
         <div id="resultArea" style="display:none;">
 
-          <!-- 特化ポイント -->
           <div class="specialization-box" id="specializationBox"></div>
 
           <div class="two-col">
-            <!-- 強み（割合） -->
             <div class="card">
               <div class="card-header">
                 <h2><i class="ti ti-star"></i>強み分析（合計100%）</h2>
-                <span class="ai-badge badge-gemini">Gemini</span>
               </div>
               <div id="strengthRatioList"></div>
             </div>
 
-            <!-- 弱み -->
             <div class="card">
               <div class="card-header">
                 <h2><i class="ti ti-alert-triangle"></i>弱み分析</h2>
@@ -127,7 +109,6 @@
             </div>
           </div>
 
-          <!-- 総合コメント -->
           <div class="card" style="margin-top:1rem;">
             <div class="card-header">
               <h2><i class="ti ti-message-circle"></i>総合コメント</h2>
@@ -135,80 +116,45 @@
             <div id="overallComment" style="font-size:13px;line-height:1.8;color:var(--text-primary);"></div>
           </div>
 
-          <!-- 再実行 -->
-          <div style="text-align:center;padding:1rem;">
-            <button class="btn-secondary" onclick="runAnalysis()">
-              <i class="ti ti-refresh"></i>再分析する
-            </button>
-          </div>
+          <div style="font-size:11px;color:var(--text-muted);text-align:center;padding:1rem;" id="generatedAtNote"></div>
         </div>
 
       </div>
     </main>
   </div>
 
-  <script src="../js/storage.js"></script>
-  <script src="../js/gemini.js"></script>
+  <script src="../js/data.js"></script>
   <script>
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
       const toggle = document.getElementById('menuToggle');
       const sidebar = document.getElementById('sidebar');
       if (toggle && sidebar) toggle.addEventListener('click', () => sidebar.classList.toggle('open'));
-    });
-
-    async function runAnalysis() {
-      const settings = Storage.getSettings();
-      if (!settings.geminiApiKey) {
-        showToast('Gemini APIキーを設定してください', 'error');
-        setTimeout(() => { window.location.href = 'settings.html'; }, 2000);
-        return;
-      }
-
-      const journals = Storage.getJournals();
-      if (journals.length < 1) {
-        showToast('ジャーナルを記録してから実行してください', 'error');
-        return;
-      }
-
-      document.getElementById('initialState').style.display = 'none';
-      document.getElementById('resultArea').style.display = 'none';
-      document.getElementById('loadingState').style.display = 'block';
-
-      const btn = document.getElementById('analyzeBtn');
-      btn.disabled = true;
-      btn.innerHTML = '<i class="ti ti-loader-2" style="animation:spin 1s linear infinite;"></i>分析中...';
 
       try {
-        const result = await GeminiAPI.analyzeSelf(journals, settings.geminiApiKey);
-        renderResult(result);
-        document.getElementById('loadingState').style.display = 'none';
-        document.getElementById('resultArea').style.display = 'block';
-        showToast('自己分析が完了しました！', 'success');
-      } catch(e) {
-        console.error(e);
-        document.getElementById('loadingState').style.display = 'none';
-        document.getElementById('initialState').style.display = 'block';
-        showToast('エラー: ' + e.message, 'error');
-      } finally {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="ti ti-sparkles"></i>自己分析を実行';
+        await Data.init();
+        const result = Data.getSelfAnalysis();
+        if (result) {
+          document.getElementById('initialState').style.display = 'none';
+          document.getElementById('resultArea').style.display = 'block';
+          renderResult(result);
+        }
+      } catch (e) {
+        document.getElementById('initialState').innerHTML =
+          `<div class="empty-state"><i class="ti ti-alert-triangle"></i><p>データの読み込みに失敗しました<br>${esc(e.message)}</p></div>`;
       }
-    }
+    });
 
     function renderResult(r) {
-      // 特化ポイント
       const specBox = document.getElementById('specializationBox');
       specBox.innerHTML = `
         <div style="font-size:11px;opacity:0.6;margin-bottom:6px;">🌟 最も特化している点</div>
         <div style="font-size:14px;line-height:1.7;opacity:0.9;">${esc(r.specialization || '')}</div>
       `;
 
-      // 強み（割合・A案）
       const strengthList = document.getElementById('strengthRatioList');
       const strengths = r.strengths || [];
       const colors = ['#0f9e6e','#2563eb','#7c3aed','#d97706','#e74c3c','#0891b2','#059669','#9333ea'];
 
-      // 合計を100に正規化
       const total = strengths.reduce((a, b) => a + (b.ratio || 0), 0);
       strengthList.innerHTML = strengths.map((s, i) => {
         const ratio = total > 0 ? Math.round((s.ratio / total) * 100) : 0;
@@ -232,9 +178,8 @@
         `;
       }).join('');
 
-      // 外観からの弱み
       const visibleEl = document.getElementById('visibleWeaknesses');
-      const visible = r.weaknesses?.visible || [];
+      const visible = (r.weaknesses && r.weaknesses.visible) || [];
       visibleEl.innerHTML = visible.length ? visible.map(w => `
         <div class="weakness-card weakness-visible">
           <div class="weakness-name" style="color:#c0392b;">⚠ ${esc(w.name)}</div>
@@ -244,9 +189,8 @@
         </div>
       `).join('') : '<div style="font-size:12px;color:var(--text-muted);padding:8px;">該当なし</div>';
 
-      // 潜在的な弱み
       const potentialEl = document.getElementById('potentialWeaknesses');
-      const potential = r.weaknesses?.potential || [];
+      const potential = (r.weaknesses && r.weaknesses.potential) || [];
       potentialEl.innerHTML = potential.length ? potential.map(w => `
         <div class="weakness-card weakness-potential">
           <div class="weakness-name" style="color:#d97706;">💡 ${esc(w.name)}</div>
@@ -256,25 +200,14 @@
         </div>
       `).join('') : '<div style="font-size:12px;color:var(--text-muted);padding:8px;">該当なし</div>';
 
-      // 総合コメント
       document.getElementById('overallComment').innerHTML =
         esc(r.overallComment || '').replace(/\n/g, '<br>');
-    }
 
-    function showToast(msg, type) {
-      document.querySelectorAll('.toast').forEach(e => e.remove());
-      const t = document.createElement('div');
-      t.className = 'toast ' + (type==='success'?'success':type==='error'?'error':'');
-      t.textContent = msg;
-      document.body.appendChild(t);
-      setTimeout(() => t.remove(), 3500);
+      const note = document.getElementById('generatedAtNote');
+      if (note && r.generatedAt) note.textContent = `生成日時: ${new Date(r.generatedAt).toLocaleString('ja-JP')}`;
     }
 
     function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
-    const style = document.createElement('style');
-    style.textContent = `@keyframes spin { to { transform: rotate(360deg); } }`;
-    document.head.appendChild(style);
   </script>
 </body>
 </html>
