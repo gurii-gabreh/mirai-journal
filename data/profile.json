@@ -9,15 +9,68 @@
     "category": "キャリア|スキル|収入|ライフスタイル|その他",
     "achieved": "達成済みかどうか(bool)",
     "progress": "進捗率0-100(history内achievementScoreの直近10件平均から算出)",
-    "history": [{"journalId": "対応するjournals.jsonのentry id", "date": "ISO8601", "achievementScore": 0, "assessment": "評価", "approach": "アプローチ", "goodPoints": ["良かった点"], "problems": ["問題点"]}],
+    "history": [
+      {
+        "journalId": "対応するjournals.jsonのentry id",
+        "date": "ISO8601",
+        "achievementScore": 0,
+        "assessment": "評価",
+        "approach": "アプローチ",
+        "goodPoints": [
+          "良かった点"
+        ],
+        "problems": [
+          "問題点"
+        ]
+      }
+    ],
     "createdAt": "ISO8601",
     "updatedAt": "ISO8601"
   },
-  "updatedAt": null,
+  "updatedAt": "2026-10-04T15:58:12.974679+00:00",
   "goals": [],
-  "strengths": [],
-  "careers": [],
-  "trends": [],
+  "strengths": [
+    {
+      "name": "アイデアを形にする行動力",
+      "score": 78,
+      "reason": "自分のアイデアをアプリ制作につなげた。ただし、完成・公開・利用者による評価までは確認できていないため、初回記録に基づく暫定評価。"
+    },
+    {
+      "name": "課題を認識して改善策を考える力",
+      "score": 72,
+      "reason": "指示の伝達と時間配分の問題について具体的な対策を挙げている。対策の実行と効果は今後の記録で確認する必要がある。"
+    }
+  ],
+  "careers": [
+    {
+      "name": "AIを活用するアプリケーション開発者",
+      "score": 75,
+      "reason": "複数のAIを使ってアイデアを実装する行動が見られる。適性の暫定評価であり、コードの理解、動作検証、保守能力は今回の記録では判断できない。"
+    },
+    {
+      "name": "プロトタイプ開発を担うエンジニア",
+      "score": 70,
+      "reason": "アイデアを形にする意欲は候補としての根拠になる。今後は制作時間の管理と、成果物が目的を満たすことの検証が必要。"
+    }
+  ],
+  "trends": [
+    {
+      "title": "AI支援開発における指示と検証の重要性",
+      "relevance": "高",
+      "insight": "今回の手戻りは、AIを使うだけでは意図どおりの成果にならないことを示している。依頼内容の明確化に加え、生成された実装が完了条件を満たすか確認する工程を設けたい。",
+      "goalId": null,
+      "date": "2026-10-04T15:00:00+09:00",
+      "journalId": "j_1791129492"
+    },
+    {
+      "title": "動画学習と実践の両立",
+      "relevance": "高",
+      "insight": "明日はUdemy視聴と開発を予定しているため、動画を見続けて作業時間が膨らむ点に注意したい。一つの内容を学んだら、実装または自分の言葉での説明につなげ、学習成果を確認する。",
+      "goalId": null,
+      "date": "2026-10-04T15:00:00+09:00",
+      "journalId": "j_1791129492"
+    }
+  ],
   "weeklyReport": null,
   "selfAnalysis": null
 }
