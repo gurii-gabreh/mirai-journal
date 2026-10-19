@@ -13,6 +13,12 @@
     .journal-entry:last-child { border-bottom: none; }
     .journal-entry-date { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
     .journal-entry-text { font-size: 13px; color: var(--text-primary); line-height: 1.7; white-space: pre-wrap; }
+    .journal-entry-label { font-size: 11px; color: var(--text-muted); margin: 10px 0 2px; font-weight: 500; }
+    .journal-entry-label:first-of-type { margin-top: 0; }
+    .journal-entry-habits { margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; }
+    .habit-badge { font-size: 12px; padding: 2px 8px; border-radius: 10px; }
+    .habit-badge.habit-done { background: rgba(15,158,110,0.12); color: #0f9e6e; }
+    .habit-badge.habit-missed { background: rgba(217,48,48,0.1); color: #d93030; }
     .journal-entry-summary { font-size: 12px; color: var(--accent-blue); margin-top: 8px; padding: 8px; background: var(--bg-base); border-radius: 6px; }
     .journal-entry-tags { margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; }
   </style>
@@ -51,7 +57,7 @@
 
       <div class="content-body">
         <div class="alert alert-info" style="margin-bottom:1rem;font-size:13px;line-height:1.7;">
-          新しいジャーナルは、このページからは記録できません。<strong>Gemini Live面談 → claude-voice-bridgeの「ジャーナル面談」タブ → Claude Codeへ貼り付けて分析依頼</strong>という手順で記録されます。
+          新しいジャーナルは、このページからは記録できません。<strong>①Gemini Live面談 → claude-voice-bridgeの「ジャーナル面談」タブ → Claude Codeへ貼り付けて分析依頼</strong>、または<strong>②日報をClaude Codeのチャットへ直接貼り付けて記録を依頼</strong>という手順で記録されます(同じ日に両方あれば同一エントリに統合されます)。
           詳しくは<a href="settings.html" style="color:inherit;text-decoration:underline;">このアプリについて</a>を参照してください。
         </div>
 
@@ -100,7 +106,9 @@
         return `
         <div class="journal-entry">
           <div class="journal-entry-date">${new Date(j.date).toLocaleString('ja-JP')}</div>
-          <div class="journal-entry-text">${esc(j.rawTranscript || '')}</div>
+          ${j.rawTranscript ? `<div class="journal-entry-label">🎙️ 面談トランスクリプト</div><div class="journal-entry-text">${esc(j.rawTranscript)}</div>` : ''}
+          ${j.dailyReport ? `<div class="journal-entry-label">🗒️ 日報</div><div class="journal-entry-text">${esc(j.dailyReport)}</div>` : ''}
+          ${(j.habits || []).length ? `<div class="journal-entry-habits">${j.habits.map(h => `<span class="habit-badge ${h.done ? 'habit-done' : 'habit-missed'}">${h.done ? '○' : '✗'} ${esc(h.name)}</span>`).join('')}</div>` : ''}
           ${a && a.summary ? `<div class="journal-entry-summary">📝 ${esc(a.summary)}</div>` : ''}
           ${a && (a.tags || []).length ? `<div class="journal-entry-tags">${a.tags.map(t => `<span class="tag">${esc(t)}</span>`).join('')}</div>` : ''}
           ${!a ? `<div style="font-size:11px;color:var(--text-muted);margin-top:6px;">(まだ分析されていません)</div>` : ''}

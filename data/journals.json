@@ -1,12 +1,14 @@
 {
   "schema": "mirai-journal journals v1",
-  "description": "日々のジャーナル(本文+AI分析結果)。高頻度で追記される、このアプリの正本データ(2026-10-04新設)。記録手順: ① Gemini Liveで面談 → ② claude-voice-bridgeの「ジャーナル面談」タブへ貼り付け・保存(生トランスクリプトはclaude-voice-bridge/data/journal.jsonへ) → ③ その内容をClaude Codeセッションへ貼り付けて分析を依頼 → ④ Claudeがcodex execで分析を委任・結果をレビュー → ⑤ Claudeがこのファイルへ直接commitする。書き込みは常にClaude Code側が行い、mirai-journalのサイト自体はこのファイルを読むだけのビューアー(原則: progress-tracker-dashboardのdata/ai-config.json management.jsonSplittingPrinciple、claude-core-rules.mdルール29参照)。",
+  "description": "日々のジャーナル(本文+AI分析結果)。高頻度で追記される、このアプリの正本データ(2026-10-04新設)。記録経路は2通り: ①Gemini Liveで面談 → claude-voice-bridgeの「ジャーナル面談」タブへ貼り付け・保存(生トランスクリプトはclaude-voice-bridge/data/journal.jsonへ) → その内容をClaude Codeセッションへ貼り付けて分析を依頼、または②日報(手書き・テキスト問わず)をClaude Codeのチャットへ直接貼り付けて記録を依頼(2026-10-19追加)。いずれの経路でも、Claudeがcodex execで分析を委任・結果をレビューし、このファイルへ直接commitする。同じ日に①②両方があれば同一エントリに統合する。書き込みは常にClaude Code側が行い、mirai-journalのサイト自体はこのファイルを読むだけのビューアー(原則: progress-tracker-dashboardのdata/ai-config.json management.jsonSplittingPrinciple、claude-core-rules.mdルール29参照)。",
   "entrySchema": {
     "id": "一意のID(例: j_<unixtime>)",
-    "date": "ISO8601の日時(面談を行った日時)",
-    "rawTranscript": "Gemini Live面談の生トランスクリプト(claude-voice-bridgeのjournal.jsonから取り込んだもの、要約・改変しない)",
+    "date": "ISO8601の日時(面談または日報の対象日)",
+    "rawTranscript": "Gemini Live面談の生トランスクリプト(claude-voice-bridgeのjournal.jsonから取り込んだもの、要約・改変しない)。この日に音声面談が無ければnull",
+    "dailyReport": "ユーザーがClaude Codeのチャットへ直接貼り付けた日報の原文(要約・改変しない、2026-10-19追加)。この日に日報が無ければnull",
     "sourceJournalId": "claude-voice-bridge側data/journal.jsonのエントリid(取り込み元の参照用、無ければnull)",
     "goalIds": "紐づけた目標のid配列(data/profile.jsonのgoals参照、無ければ空配列)",
+    "habits": "[{name, done}, ...] その日の習慣項目の実施有無(○×)。rawTranscript/dailyReportの本文中で言及された習慣をClaudeが読み取って記録する(固定の習慣マスタは無く、言及された項目のみ毎日その場で記録する。2026-10-19追加、無ければ空配列)",
     "analysis": {
       "summary": "今日の要約(2文程度)",
       "goodPoints": [
@@ -67,8 +69,13 @@
       "id": "j_1791129492",
       "date": "2026-10-04T15:00:00+09:00",
       "rawTranscript": "【今日できたこと】\n内容: CodexとClaudeを掛け合わせたアプリの制作\n良かった点: 自分の考えたアイデアを形にできて、実績を積めたこと。\n課題・悪かった点: AIへの指示がうまく伝わらず、何度かうまくいかないことがあった。\n次への対策: AI側に分からない点を細かく回答させ、それに対して自分も細かく指示を出すようにする。\n\n【今日できなかったこと】\n内容: 資格の勉強\n良かった点・気づき: (特になし)\n課題・悪かった点: AIアプリの開発に時間を取られすぎてしまった。\n次への対策: スケジュールを立てて時間で区切り、もし終わらなくてもそこで切り替えて別のタスクを実施するようにする。\n\n【明日の目標】\n今日できなかった資格の勉強をやる。\nUdemyの動画を見ながら、途中になっているアプリ制作の続き(追加作業)を進める。",
+      "dailyReport": null,
       "sourceJournalId": "1791130479407",
       "goalIds": [],
+      "habits": [
+        { "name": "アプリ制作", "done": true },
+        { "name": "資格の勉強", "done": false }
+      ],
       "analysis": {
         "summary": "CodexとClaudeを組み合わせたアプリ制作に取り組み、自分のアイデアを形にした一方、AIへの指示が伝わらず手戻りが発生しました。開発に時間を使いすぎて資格の勉強ができなかったため、明日は学習時間を確保し、時間で区切ってアプリの追加作業も進める方針です。",
         "goodPoints": [

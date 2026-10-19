@@ -70,15 +70,18 @@ function renderRecentJournals(journals) {
   if (!journals.length) return; // 空状態はHTMLのまま
   el.innerHTML = journals
     .map(
-      (j) => `
+      (j) => {
+        const preview = j.rawTranscript || j.dailyReport || "";
+        return `
     <div class="journal-item">
       <div class="journal-item-date">${formatDate(j.date)}</div>
-      <div class="journal-item-text">${escHtml((j.rawTranscript || "").slice(0, 120))}${(j.rawTranscript || "").length > 120 ? "…" : ""}</div>
+      <div class="journal-item-text">${escHtml(preview.slice(0, 120))}${preview.length > 120 ? "…" : ""}</div>
       <div class="journal-item-tags">
         ${((j.analysis && j.analysis.tags) || []).map((t) => `<span class="tag">${escHtml(t)}</span>`).join("")}
       </div>
     </div>
-  `
+  `;
+      }
     )
     .join("");
 }

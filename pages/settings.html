@@ -64,16 +64,18 @@
             <h2><i class="ti ti-route"></i>新しいジャーナルの記録の仕方</h2>
           </div>
 
+          <p style="font-size:12px;color:var(--text-muted);margin:0 0 .75rem;">記録経路は2通りあります(①音声面談・②日報、2026-10-19に②を追加)。どちらも最終的にはClaude Codeが記録します。</p>
+
           <div class="flow-step">
-            <div class="flow-num">1</div>
+            <div class="flow-num">1a</div>
             <div class="flow-body">
-              <div class="flow-title">Geminiアプリで音声面談する</div>
+              <div class="flow-title">①Geminiアプリで音声面談する</div>
               <div class="flow-desc">Geminiアプリの「Gemini Live」機能(Gem)で、1日の振り返り面談を行います。</div>
             </div>
           </div>
 
           <div class="flow-step">
-            <div class="flow-num">2</div>
+            <div class="flow-num">1b</div>
             <div class="flow-body">
               <div class="flow-title">claude-voice-bridgeの「ジャーナル面談」タブへ貼り付け</div>
               <div class="flow-desc">面談終了時に自動保存されたトランスクリプトをコピーし、claude-voice-bridgeサイドパネル(またはWeb版)の「📓 ジャーナル面談」タブへ貼り付けて保存します。生トランスクリプトはclaude-voice-bridge側のdata/journal.jsonへ保存されます。</div>
@@ -81,10 +83,18 @@
           </div>
 
           <div class="flow-step">
+            <div class="flow-num">2a</div>
+            <div class="flow-body">
+              <div class="flow-title">②日報をClaude Codeへ直接貼り付ける</div>
+              <div class="flow-desc">claude-voice-bridgeは経由せず、その日の日報(テキスト・手書き問わず)をClaude Codeのチャットへ直接貼り付けて記録を依頼します。</div>
+            </div>
+          </div>
+
+          <div class="flow-step">
             <div class="flow-num">3</div>
             <div class="flow-body">
-              <div class="flow-title">Claude Codeへ貼り付けて分析を依頼する</div>
-              <div class="flow-desc">保存後に表示される案内に従い、同じ内容をClaude Codeのチャットへ貼り付けて「分析して」のように依頼します。</div>
+              <div class="flow-title">Claude Codeへ分析を依頼する(①の場合)</div>
+              <div class="flow-desc">①の場合は、保存後に表示される案内に従い、同じ内容をClaude Codeのチャットへ貼り付けて「分析して」のように依頼します。②は貼り付けた時点でこの手順と同じ扱いになります。</div>
             </div>
           </div>
 
@@ -92,7 +102,7 @@
             <div class="flow-num">4</div>
             <div class="flow-body">
               <div class="flow-title">Claudeがcodex execで分析を委任・レビューする</div>
-              <div class="flow-desc">Claudeが分析をCodexへ委任し、返ってきた結果(要約・良かった点・問題点・目標への貢献・強み・キャリア候補・トレンド等)をレビューします。</div>
+              <div class="flow-desc">Claudeが分析をCodexへ委任し、返ってきた結果(要約・良かった点・問題点・目標への貢献・強み・キャリア候補・トレンド・習慣項目の○×等)をレビューします。</div>
             </div>
           </div>
 
@@ -100,7 +110,7 @@
             <div class="flow-num">5</div>
             <div class="flow-body">
               <div class="flow-title">Claudeがこのリポジトリへ直接記録する</div>
-              <div class="flow-desc">問題なければ、Claudeがdata/journals.json・data/profile.jsonへ直接commit・pushします。このサイトは次回表示時にその内容を反映します。</div>
+              <div class="flow-desc">問題なければ、Claudeがdata/journals.json・data/profile.jsonへ直接commit・pushします。同じ日に①②両方あれば同一エントリに統合します。このサイトは次回表示時にその内容を反映します。</div>
             </div>
           </div>
         </div>
