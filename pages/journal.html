@@ -21,6 +21,23 @@
     .habit-badge.habit-missed { background: rgba(217,48,48,0.1); color: #d93030; }
     .journal-entry-summary { font-size: 12px; color: var(--accent-blue); margin-top: 8px; padding: 8px; background: var(--bg-base); border-radius: 6px; }
     .journal-entry-tags { margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; }
+    .journal-entry.highlight { outline: 2px solid var(--accent-blue); outline-offset: -1px; border-radius: 8px; transition: outline-color .3s; }
+
+    /* カレンダー(ブロック型、月表示)。2026-10-20追加。記録がある日はブロックが色付き
+       になりクリック可能、押すと右の一覧内の該当エントリへスクロール+ハイライトする。 */
+    .journal-layout { display: grid; grid-template-columns: 280px 1fr; gap: 1rem; align-items: start; }
+    @media (max-width: 900px) { .journal-layout { grid-template-columns: 1fr; } }
+    .cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: .75rem; }
+    .cal-nav-btn { background: none; border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary); cursor: pointer; padding: 2px 8px; font-size: 13px; }
+    .cal-nav-btn:hover { background: var(--bg-base); }
+    .cal-month-label { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+    .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+    .cal-dow { font-size: 10px; color: var(--text-muted); text-align: center; padding-bottom: 4px; }
+    .cal-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 6px; font-size: 12px; color: var(--text-muted); }
+    .cal-day.empty { visibility: hidden; }
+    .cal-day.is-today { box-shadow: inset 0 0 0 1px var(--accent-blue); }
+    .cal-day.has-entry { background: var(--accent-blue); color: #fff; font-weight: 600; cursor: pointer; }
+    .cal-day.has-entry:hover { opacity: .85; }
   </style>
 </head>
 <body>
@@ -61,13 +78,27 @@
           詳しくは<a href="settings.html" style="color:inherit;text-decoration:underline;">このアプリについて</a>を参照してください。
         </div>
 
-        <div class="card">
-          <div class="card-header">
-            <h2><i class="ti ti-history"></i>記録一覧</h2>
-            <span style="font-size:12px;color:var(--text-muted);" id="entryCount"></span>
+        <div class="journal-layout">
+          <div class="card">
+            <div class="card-header">
+              <h2><i class="ti ti-calendar"></i>カレンダー</h2>
+            </div>
+            <div class="cal-nav">
+              <button class="cal-nav-btn" id="calPrev"><i class="ti ti-chevron-left"></i></button>
+              <span class="cal-month-label" id="calMonthLabel"></span>
+              <button class="cal-nav-btn" id="calNext"><i class="ti ti-chevron-right"></i></button>
+            </div>
+            <div class="cal-grid" id="calGrid"></div>
           </div>
-          <div id="journalList">
-            <div class="empty-state"><i class="ti ti-loader-2"></i><p>読み込み中...</p></div>
+
+          <div class="card">
+            <div class="card-header">
+              <h2><i class="ti ti-history"></i>記録一覧</h2>
+              <span style="font-size:12px;color:var(--text-muted);" id="entryCount"></span>
+            </div>
+            <div id="journalList">
+              <div class="empty-state"><i class="ti ti-loader-2"></i><p>読み込み中...</p></div>
+            </div>
           </div>
         </div>
       </div>
@@ -85,7 +116,9 @@
 
       try {
         await Data.init();
-        render(Data.getJournals());
+        const journals = Data.getJournals();
+        render(journals);
+        initCalendar(journals);
       } catch (e) {
         document.getElementById('journalList').innerHTML =
           `<div class="empty-state"><i class="ti ti-alert-triangle"></i><p>データの読み込みに失敗しました<br>${esc(e.message)}</p></div>`;
@@ -104,7 +137,7 @@
       el.innerHTML = sorted.map(j => {
         const a = j.analysis || null;
         return `
-        <div class="journal-entry">
+        <div class="journal-entry" id="entry-${esc(j.id)}">
           <div class="journal-entry-date">${new Date(j.date).toLocaleString('ja-JP')}</div>
           ${j.rawTranscript ? `<div class="journal-entry-label">🎙️ 面談トランスクリプト</div><div class="journal-entry-text">${esc(j.rawTranscript)}</div>` : ''}
           ${j.dailyReport ? `<div class="journal-entry-label">🗒️ 日報</div><div class="journal-entry-text">${esc(j.dailyReport)}</div>` : ''}
@@ -115,6 +148,72 @@
         </div>
         `;
       }).join('');
+    }
+
+    // カレンダー(ブロック型・月表示)。記録の無い日はグレーの数字のみ、記録がある日は
+    // 色付きブロックになりクリック可能。日付はentryの日付(new Date(j.date)のローカル
+    // タイムゾーン)で丸める(一覧表示のtoLocaleStringと同じ基準に揃える)。
+    const calState = { year: null, month: null, entriesByDay: new Map() };
+
+    function dayKey(d) { return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`; }
+
+    function initCalendar(journals) {
+      calState.entriesByDay = new Map();
+      journals.forEach(j => {
+        const d = new Date(j.date);
+        if (isNaN(d)) return;
+        const key = dayKey(d);
+        if (!calState.entriesByDay.has(key)) calState.entriesByDay.set(key, []);
+        calState.entriesByDay.get(key).push(j.id);
+      });
+
+      const latest = [...journals].sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+      const base = latest ? new Date(latest.date) : new Date();
+      calState.year = base.getFullYear();
+      calState.month = base.getMonth();
+
+      document.getElementById('calPrev').addEventListener('click', () => shiftMonth(-1));
+      document.getElementById('calNext').addEventListener('click', () => shiftMonth(1));
+      renderCalendar();
+    }
+
+    function shiftMonth(delta) {
+      let m = calState.month + delta;
+      let y = calState.year;
+      if (m < 0) { m = 11; y -= 1; }
+      if (m > 11) { m = 0; y += 1; }
+      calState.month = m;
+      calState.year = y;
+      renderCalendar();
+    }
+
+    function renderCalendar() {
+      const { year, month, entriesByDay } = calState;
+      document.getElementById('calMonthLabel').textContent = `${year}年${month + 1}月`;
+
+      const today = new Date();
+      const firstDow = new Date(year, month, 1).getDay();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+      let html = ['日', '月', '火', '水', '木', '金', '土'].map(d => `<div class="cal-dow">${d}</div>`).join('');
+      for (let i = 0; i < firstDow; i++) html += '<div class="cal-day empty"></div>';
+      for (let day = 1; day <= daysInMonth; day++) {
+        const key = `${year}-${month}-${day}`;
+        const ids = entriesByDay.get(key);
+        const isToday = today.getFullYear() === year && today.getMonth() === month && today.getDate() === day;
+        const cls = ['cal-day', ids ? 'has-entry' : '', isToday ? 'is-today' : ''].filter(Boolean).join(' ');
+        const clickAttr = ids ? ` onclick="goToEntry('${esc(ids[0])}')"` : '';
+        html += `<div class="${cls}"${clickAttr}>${day}</div>`;
+      }
+      document.getElementById('calGrid').innerHTML = html;
+    }
+
+    function goToEntry(id) {
+      const target = document.getElementById('entry-' + id);
+      if (!target) return;
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      target.classList.add('highlight');
+      setTimeout(() => target.classList.remove('highlight'), 2000);
     }
 
     function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
